@@ -597,6 +597,7 @@ html[data-theme="dark"] .course-card.course-card-with-image { color:#fff; }
   .theme-toggle,.menu-toggle { width:36px; height:36px; padding:7px; }
   .topbar-cart .catalog-cart-trigger { gap:5px; min-width:38px; padding:8px; font-size:0; }
   .topbar-cart .catalog-cart-trigger .cart-count { font-size:.55rem; }
+  .topbar-login { display:none; }
   .topbar-login span { display:none; }
   .sidebar { top:68px; }
   .sidebar-backdrop { inset-block-start:68px; }

@@ -199,12 +199,13 @@ function App() {
   const [freeTrialRegistration, setFreeTrialRegistration] = useState<FreeTrialRegistration | null>(null);
   const [freeTrialConfirmation, setFreeTrialConfirmation] = useState<FreeTrialRegistration | null>(null);
   const [passwordRecovery, setPasswordRecovery] = useState(isPasswordRecoveryLink);
+  const recoveryRequested = passwordRecovery || isPasswordRecoveryLink();
 
   useEffect(() => {
-    if (passwordRecovery && location.pathname !== "/login") {
+    if (recoveryRequested && location.pathname !== "/login") {
       navigate("/login", { replace: true });
     }
-  }, [location.pathname, navigate, passwordRecovery]);
+  }, [location.pathname, navigate, recoveryRequested]);
 
   useEffect(() => {
     void i18n.changeLanguage(language);
@@ -318,6 +319,10 @@ function App() {
     }
   }
 
+  if (recoveryRequested && location.pathname !== "/login") {
+    return <Navigate to="/login" replace />;
+  }
+
   return (
     <div className={`app-shell${menuOpen ? " menu-open" : ""}`}>
       <AppHeader account={account} darkMode={darkMode} onDarkModeChange={setDarkMode} onSignOut={handleSignOut} menuOpen={menuOpen} onMenuToggle={() => setMenuOpen((open) => !open)} cartItems={courseCart} onRemoveFromCart={removeFromCourseCart} />
@@ -336,7 +341,7 @@ function App() {
             <Route path="/orders" element={<AuthenticatedRoute account={account} authReady={authReady}><OrdersPage account={account} cartItems={courseCart} onRemoveFromCart={removeFromCourseCart} onClearCart={() => setCourseCart([])} /></AuthenticatedRoute>} />
             <Route path="/admin/student-profile" element={<Navigate to="/profile" replace />} />
             <Route path="/admin/*" element={<AdminRoute account={account} />} />
-            <Route path="/login" element={passwordRecovery ? <UpdatePasswordPage onAuthenticated={setAccount} onCompleted={() => setPasswordRecovery(false)} /> : <LoginPage onAuthenticated={setAccount} />} />
+            <Route path="/login" element={recoveryRequested ? <UpdatePasswordPage onAuthenticated={setAccount} onCompleted={() => setPasswordRecovery(false)} /> : <LoginPage onAuthenticated={setAccount} />} />
             <Route path="/privacy" element={<LegalPage page="privacy" />} />
             <Route path="/imprint" element={<LegalPage page="imprint" />} />
             <Route path="/terms" element={<LegalPage page="terms" />} />

@@ -339,13 +339,13 @@ function App() {
         <main className="app-main">
           <Routes>
             <Route path="/" element={<HomePage account={account} />} />
-            <Route path="/courses" element={<CoursesPage account={account} cartItems={courseCart} onRemoveFromCart={removeFromCourseCart} />} />
-            <Route path="/courses/:courseSlug" element={<CourseDetailPage account={account} freeTrialRegistration={freeTrialRegistration} onRegisterFreeTrial={addFreeTrialClass} onAddToCart={addToCourseCart} cartItems={courseCart} />} />
+            <Route path="/courses" element={<CoursesPage cartItems={courseCart} onRemoveFromCart={removeFromCourseCart} />} />
+            <Route path="/courses/:courseSlug" element={<CourseDetailPage onAddToCart={addToCourseCart} cartItems={courseCart} />} />
             <Route path="/schedule" element={<SchedulePage />} />
             <Route path="/profile" element={<AuthenticatedRoute account={account} authReady={authReady}><ProfilePage account={account} freeTrialRegistration={freeTrialRegistration} onSignOut={handleSignOut} /></AuthenticatedRoute>} />
             <Route path="/settings" element={<AuthenticatedRoute account={account} authReady={authReady}><UserSettingsPage language={language} darkMode={darkMode} reducedMotion={reducedMotion} classReminders={classReminders} classReminderTiming={classReminderTiming} newActivityNotifications={newActivityNotifications} emailUpdates={emailUpdates} onLanguageChange={setLanguage} onDarkModeChange={setDarkMode} onReducedMotionChange={setReducedMotion} onClassRemindersChange={setClassReminders} onClassReminderTimingChange={setClassReminderTiming} onNewActivityNotificationsChange={setNewActivityNotifications} onEmailUpdatesChange={setEmailUpdates} /></AuthenticatedRoute>} />
             <Route path="/events" element={<EventsPage account={account} />} />
-            <Route path="/orders" element={<AuthenticatedRoute account={account} authReady={authReady}><OrdersPage account={account} cartItems={courseCart} onRemoveFromCart={removeFromCourseCart} onClearCart={() => setCourseCart([])} /></AuthenticatedRoute>} />
+            <Route path="/orders" element={<AuthenticatedRoute account={account} authReady={authReady}><OrdersPage account={account} freeTrialRegistration={freeTrialRegistration} onRegisterFreeTrial={addFreeTrialClass} cartItems={courseCart} onRemoveFromCart={removeFromCourseCart} onClearCart={() => setCourseCart([])} /></AuthenticatedRoute>} />
             <Route path="/admin/student-profile" element={<Navigate to="/profile" replace />} />
             <Route path="/admin/*" element={<AdminRoute account={account} />} />
             <Route path="/login" element={recoveryRequested ? <UpdatePasswordPage onAuthenticated={setAccount} onCompleted={() => setPasswordRecovery(false)} /> : <LoginPage onAuthenticated={setAccount} />} />
@@ -698,12 +698,11 @@ function ScheduleRow({ item }: { item: ScheduleItem }) {
   return <Link to={item.href} className={`schedule-row schedule-${item.accent}`} aria-label={`${t("detailsFor")} ${item.title}, ${item.level}`}><div className="schedule-time"><strong>{item.time}</strong><span>{t(`days.${item.day}`)}</span></div><div className="schedule-main"><strong>{item.title}</strong><span>{item.level}</span></div><span className="round-button" aria-hidden="true"><ChevronRight size={17} /></span></Link>;
 }
 
-function CoursesPage({ account, cartItems, onRemoveFromCart }: { account: Account | null; cartItems: CourseCartItem[]; onRemoveFromCart: (id: string) => void }) {
+function CoursesPage({ cartItems, onRemoveFromCart }: { cartItems: CourseCartItem[]; onRemoveFromCart: (id: string) => void }) {
   const { t } = useTranslation();
   const [groups, setGroups] = useState<CourseGroup[]>(fallbackCatalog);
   const [catalogSource, setCatalogSource] = useState("fallback");
   const [cartOpen, setCartOpen] = useState(false);
-  const [showFirstClassBanner, setShowFirstClassBanner] = useState(!account);
 
   useEffect(() => {
     let mounted = true;
@@ -716,32 +715,10 @@ function CoursesPage({ account, cartItems, onRemoveFromCart }: { account: Accoun
     return () => { mounted = false; };
   }, []);
 
-  useEffect(() => {
-    if (!account?.id || isAdminAccount(account)) {
-      setShowFirstClassBanner(!account);
-      return;
-    }
-    let mounted = true;
-    getUserPurchaseHistory(account.id).then((result) => {
-      if (!mounted) return;
-      const now = Date.now();
-      const hasCurrentCourseAccess = result.purchases.some((purchase) => {
-        if (purchase.kind === "membership" || purchase.status === "refunded") return false;
-        if (purchase.validUntil && new Date(purchase.validUntil).getTime() < now) return false;
-        if (purchase.kind === "package" && purchase.sessions?.length && !purchase.sessions.some((session) => session.status === "available")) return false;
-        return true;
-      });
-      setShowFirstClassBanner(!result.unavailable && !hasCurrentCourseAccess);
-    }).catch(() => {
-      if (mounted) setShowFirstClassBanner(false);
-    });
-    return () => { mounted = false; };
-  }, [account]);
-
-  return <div className="page-stack inner-page"><PageIntro eyebrow={t("nav.courses")} title={t("coursesTitle")} copy={t("coursesCopy")} /><div className="catalog-toolbar"><span>{t("catalog.coursePath")}</span><div className="catalog-cart"><button type="button" className="secondary-button compact catalog-cart-trigger" onClick={() => setCartOpen((open) => !open)} aria-expanded={cartOpen} aria-haspopup="dialog"><ShoppingBag size={15} />{t("catalog.cart")} <b className="cart-count">{cartItems.length}</b><ChevronDown size={14} className={cartOpen ? "cart-chevron open" : "cart-chevron"} /></button>{cartOpen && <div className="catalog-cart-popover" role="dialog" aria-label={t("catalog.cartTitle")}><div className="catalog-cart-popover-heading"><div><p className="eyebrow">{t("catalog.cartEyebrow")}</p><strong>{t("catalog.cartTitle")}</strong></div><span>{t("catalog.cartCopy", { count: cartItems.length })}</span></div>{cartItems.length > 0 ? <div className="catalog-cart-items">{cartItems.map((item) => <div className="catalog-cart-item" key={item.id}><div><strong>{item.courseName}{item.styleName ? ` · ${item.styleName}` : ""}</strong><small>{item.levelName}</small></div><div className="catalog-cart-item-actions"><span>{item.amount ? `${item.currency ?? "EUR"} ${item.amount}` : t("catalog.pricePending")}</span><button className="catalog-cart-remove" type="button" onClick={() => onRemoveFromCart(item.id)} aria-label={t("catalog.removeFromCart")} title={t("catalog.removeFromCart")}><Trash2 size={15} aria-hidden="true" /></button></div></div>)}</div> : <p className="catalog-cart-empty">{t("catalog.cartEmpty")}</p>}<Link to="/orders#checkout" className="primary-button small" onClick={() => setCartOpen(false)}>{t("catalog.openCart")} <ArrowUpRight size={15} /></Link></div>}</div></div><div className="course-list-page">{groups.map((group, index) => <CourseCard key={group.id} group={group} index={index} />)}</div><p className="source-note">{catalogSource === "supabase" ? t("catalogConnected") : t("catalogFallback")}</p>{showFirstClassBanner && <div className="info-banner"><Sparkles size={19} /><div><strong>{t("firstClassTitle")}</strong><p>{t("firstClassCopy")}</p></div><Link to="/login" className="primary-button small">{t("getStarted")} <ArrowUpRight size={16} /></Link></div>}</div>;
+  return <div className="page-stack inner-page"><PageIntro eyebrow={t("nav.courses")} title={t("coursesTitle")} copy={t("coursesCopy")} /><div className="catalog-toolbar"><span>{t("catalog.coursePath")}</span><div className="catalog-cart"><button type="button" className="secondary-button compact catalog-cart-trigger" onClick={() => setCartOpen((open) => !open)} aria-expanded={cartOpen} aria-haspopup="dialog"><ShoppingBag size={15} />{t("catalog.cart")} <b className="cart-count">{cartItems.length}</b><ChevronDown size={14} className={cartOpen ? "cart-chevron open" : "cart-chevron"} /></button>{cartOpen && <div className="catalog-cart-popover" role="dialog" aria-label={t("catalog.cartTitle")}><div className="catalog-cart-popover-heading"><div><p className="eyebrow">{t("catalog.cartEyebrow")}</p><strong>{t("catalog.cartTitle")}</strong></div><span>{t("catalog.cartCopy", { count: cartItems.length })}</span></div>{cartItems.length > 0 ? <div className="catalog-cart-items">{cartItems.map((item) => <div className="catalog-cart-item" key={item.id}><div><strong>{item.courseName}{item.styleName ? ` · ${item.styleName}` : ""}</strong><small>{item.levelName}</small></div><div className="catalog-cart-item-actions"><span>{item.amount ? `${item.currency ?? "EUR"} ${item.amount}` : t("catalog.pricePending")}</span><button className="catalog-cart-remove" type="button" onClick={() => onRemoveFromCart(item.id)} aria-label={t("catalog.removeFromCart")} title={t("catalog.removeFromCart")}><Trash2 size={15} aria-hidden="true" /></button></div></div>)}</div> : <p className="catalog-cart-empty">{t("catalog.cartEmpty")}</p>}<Link to="/orders#checkout" className="primary-button small" onClick={() => setCartOpen(false)}>{t("catalog.openCart")} <ArrowUpRight size={15} /></Link></div>}</div></div><div className="course-list-page">{groups.map((group, index) => <CourseCard key={group.id} group={group} index={index} />)}</div><p className="source-note">{catalogSource === "supabase" ? t("catalogConnected") : t("catalogFallback")}</p></div>;
 }
 
-function CourseDetailPage({ account, freeTrialRegistration, onRegisterFreeTrial, onAddToCart, cartItems }: { account: Account | null; freeTrialRegistration: FreeTrialRegistration | null; onRegisterFreeTrial: (item: FreeTrialClass) => void; onAddToCart: (item: CourseCartItem) => void; cartItems: CourseCartItem[] }) {
+function CourseDetailPage({ onAddToCart, cartItems }: { onAddToCart: (item: CourseCartItem) => void; cartItems: CourseCartItem[] }) {
   const { t } = useTranslation();
   const { courseSlug } = useParams();
   const [searchParams] = useSearchParams();
@@ -780,8 +757,6 @@ function CourseDetailPage({ account, freeTrialRegistration, onRegisterFreeTrial,
   }, [course, requestedLevelCode, requestedStyleSlug]);
 
   if (!course) return <div className="page-stack inner-page"><PageIntro eyebrow={t("catalog.courseLabel")} title={t("catalog.notFound")} copy={t("catalog.notFoundCopy")} /><Link to="/courses" className="quiet-link">{t("catalog.backToCourses")} <ArrowUpRight size={15} /></Link></div>;
-  const currentCourse = course;
-
   function selectStyle(styleId: string) {
     setSelectedStyleId(styleId);
     setSelectedLevelId(null);
@@ -814,20 +789,12 @@ function CourseDetailPage({ account, freeTrialRegistration, onRegisterFreeTrial,
         : selectedLevel?.code;
   const selectedItemId = selectedLevel ? `${course.id}:${selectedStyle?.id ?? "course"}:${selectedLevel.id}` : "";
   const selectedInCart = selectedItemId ? cartItems.some((item) => item.id === selectedItemId) : false;
-  const freeTrialAvailable = Boolean(account && !isAdminAccount(account) && (!freeTrialRegistration || freeTrialRegistration.status === "active"));
-  const selectedInFreeTrial = Boolean(selectedItemId && freeTrialRegistration?.classes.some((item) => item.id === selectedItemId));
   const flowStep = selectedLevel ? "detail" : course.styles.length > 0 && !selectedStyle ? "styles" : "classes";
-
-  function registerSelectedClass() {
-    if (!selectedLevel?.details || !freeTrialAvailable) return;
-    onRegisterFreeTrial({ id: selectedItemId, courseId: currentCourse.id, courseName: currentCourse.name, styleId: selectedStyle?.id, styleName: selectedStyle?.name, levelId: selectedLevel.id, levelName: selectedLevel.name, levelDescription: selectedLevel.description, ...selectedLevel.details });
-  }
 
   return (
     <div className={`page-stack inner-page course-detail-flow mobile-step-${flowStep}`}>
       <Link to="/courses" className="back-link"><ChevronRight size={16} className="back-link-icon" />{t("catalog.backToCourses")}</Link>
       <PageIntro eyebrow={t("catalog.courseLabel")} title={course.name} copy={course.description ?? t("catalog.courseCopy")} />
-      {freeTrialAvailable && <div className="free-trial-banner"><span className="free-trial-banner-icon"><Sparkles size={19} /></span><div><p className="eyebrow">{t("freeTrial.eyebrow")}</p><strong>{t("freeTrial.courseTitle")}</strong><p>{t("freeTrial.courseCopy")}</p></div><span className="free-trial-validity">{t("freeTrial.validity")}</span></div>}
       {flowStep !== (course.styles.length > 0 ? "styles" : "classes") && <button type="button" className="mobile-flow-back" onClick={returnToPreviousStep}><ChevronLeft size={17} />{flowStep === "detail" ? t("catalog.backToClasses") : t("catalog.backToStyles")}</button>}
       <div className="catalog-breadcrumb"><span>{course.name}</span>{selectedStyle && <><ChevronRight size={14} /><strong>{selectedStyle.name}</strong></>}{selectedLevel && <><ChevronRight size={14} /><strong>{selectedLevel.name}</strong></>}</div>
       {course.styles.length > 0 && (
@@ -858,7 +825,7 @@ function CourseDetailPage({ account, freeTrialRegistration, onRegisterFreeTrial,
             <article className="class-detail-panel" aria-live="polite">
               <header className="class-detail-heading">
                 <div><p className="eyebrow">{t("catalog.classDetailsEyebrow")}</p><h3>{selectedLevel.name}</h3><span className="level-code">{t(`admin.levelOptions.${levelTypeKey}`)}</span></div>
-                {freeTrialAvailable ? <button type="button" className={selectedInFreeTrial ? "secondary-button compact" : "primary-button small"} disabled={selectedInFreeTrial} onClick={registerSelectedClass}>{selectedInFreeTrial ? t("freeTrial.alreadySelected") : freeTrialRegistration ? t("freeTrial.addAnother") : t("freeTrial.registerAction")} {!selectedInFreeTrial && <ArrowUpRight size={15} />}</button> : <button type="button" className={selectedInCart ? "secondary-button compact" : "primary-button small"} disabled={selectedInCart} onClick={() => onAddToCart({ id: selectedItemId, courseId: course.id, courseName: course.name, styleId: selectedStyle?.id, styleName: selectedStyle?.name, levelId: selectedLevel.id, levelName: selectedLevel.name, levelDescription: selectedLevel.description, amount: null, currency: "EUR" })}>{selectedInCart ? t("catalog.inCart") : t("catalog.addToCart")} {!selectedInCart && <ArrowUpRight size={15} />}</button>}
+                <button type="button" className={selectedInCart ? "secondary-button compact" : "primary-button small"} disabled={selectedInCart} onClick={() => onAddToCart({ id: selectedItemId, courseId: course.id, courseName: course.name, styleId: selectedStyle?.id, styleName: selectedStyle?.name, levelId: selectedLevel.id, levelName: selectedLevel.name, levelDescription: selectedLevel.description, details: selectedLevel.details, amount: null, currency: "EUR" })}>{selectedInCart ? t("catalog.inCart") : t("catalog.addToCart")} {!selectedInCart && <ArrowUpRight size={15} />}</button>
               </header>
               <p className="class-detail-description">{selectedLevel.description || t("catalog.levelFallbackCopy")}</p>
               {selectedLevel.details && (
@@ -1182,7 +1149,12 @@ function EventsPage({ account }: { account: Account | null }) {
   );
 }
 
-function OrdersPage({ account, cartItems, onRemoveFromCart, onClearCart }: { account: Account | null; cartItems: CourseCartItem[]; onRemoveFromCart: (id: string) => void; onClearCart: () => void }) {
+function toFreeTrialClass(item: CourseCartItem): FreeTrialClass | null {
+  if (!item.details) return null;
+  return { id: item.id, courseId: item.courseId, courseName: item.courseName, styleId: item.styleId, styleName: item.styleName, levelId: item.levelId, levelName: item.levelName, levelDescription: item.levelDescription, ...item.details };
+}
+
+function OrdersPage({ account, freeTrialRegistration, onRegisterFreeTrial, cartItems, onRemoveFromCart, onClearCart }: { account: Account | null; freeTrialRegistration: FreeTrialRegistration | null; onRegisterFreeTrial: (item: FreeTrialClass) => void; cartItems: CourseCartItem[]; onRemoveFromCart: (id: string) => void; onClearCart: () => void }) {
   const { t, i18n } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
@@ -1202,6 +1174,7 @@ function OrdersPage({ account, cartItems, onRemoveFromCart, onClearCart }: { acc
   const [paymentError, setPaymentError] = useState("");
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [checkoutStep, setCheckoutStep] = useState<1 | 2 | 3 | 4>(1);
+  const [selectedFreeTrialId, setSelectedFreeTrialId] = useState<string | null>(null);
   const [compactCheckout, setCompactCheckout] = useState(() => window.matchMedia("(max-width: 1024px)").matches);
   const [ordersView, setOrdersView] = useState<"active" | "history">(() => location.hash === "#old-orders" ? "history" : "active");
   const membershipCheckout = searchParams.get("product") === "membership";
@@ -1211,6 +1184,11 @@ function OrdersPage({ account, cartItems, onRemoveFromCart, onClearCart }: { acc
   const membershipInCheckout = membershipCheckout && cartItems.length > 0;
   const simulatorCategory = membershipInCheckout && accountCommercialCategory !== "erasmus" ? "discount" : accountCommercialCategory;
   const availableSimulatorPlans = enrollmentMode === "full" ? simulatorPlans.filter((plan) => plan.kind === "monthly" || plan.kind === "package") : simulatorPlans;
+  const storedFreeTrialRegistration = account ? getFreeTrialForAccount(account) : null;
+  const checkoutFreeTrialRegistration = freeTrialRegistration ?? storedFreeTrialRegistration;
+  const freeTrialCandidates = account && !isAdminAccount(account) && !checkoutFreeTrialRegistration
+    ? cartItems.map((item) => toFreeTrialClass(item)).filter((item): item is FreeTrialClass => Boolean(item))
+    : [];
 
   useEffect(() => {
     if (!account?.id) {
@@ -1340,6 +1318,14 @@ function OrdersPage({ account, cartItems, onRemoveFromCart, onClearCart }: { acc
 
   function purchaseName(purchase: UserPurchase) {
     return purchase.productKey ? t(`purchaseHistory.products.${purchase.productKey}`) : purchase.productName;
+  }
+
+  function registerCheckoutFreeTrial() {
+    if (!selectedFreeTrialId || checkoutFreeTrialRegistration) return;
+    const selectedClass = freeTrialCandidates.find((item) => item.id === selectedFreeTrialId);
+    if (!selectedClass) return;
+    onRegisterFreeTrial(selectedClass);
+    setSelectedFreeTrialId(null);
   }
 
   async function refreshPurchases(nextSelectedId?: string) {
@@ -1478,6 +1464,13 @@ function OrdersPage({ account, cartItems, onRemoveFromCart, onClearCart }: { acc
 
         {simulatorPlan && (!compactCheckout || checkoutStep === 4) && <div className="checkout-step checkout-payment-step">
           {compactCheckout && <div className="checkout-mobile-heading"><p className="eyebrow">{t("purchaseSimulator.steps.4")}</p><h3>{t("purchaseSimulator.paymentTitle")}</h3></div>}
+          {freeTrialCandidates.length > 0 && <section className="free-trial-checkout-option" aria-labelledby="free-trial-checkout-title">
+            <div className="free-trial-checkout-heading"><span className="free-trial-banner-icon"><Sparkles size={18} /></span><div><p className="eyebrow">{t("freeTrial.checkoutEyebrow")}</p><h3 id="free-trial-checkout-title">{t("freeTrial.checkoutTitle")}</h3><p>{t("freeTrial.checkoutCopy")}</p></div></div>
+            <div className="free-trial-checkout-options" role="group" aria-label={t("freeTrial.checkoutSelect")}>
+              {freeTrialCandidates.map((item) => <button type="button" className={selectedFreeTrialId === item.id ? "selected" : ""} aria-pressed={selectedFreeTrialId === item.id} key={item.id} onClick={() => setSelectedFreeTrialId(item.id)}><span><strong>{item.courseName}{item.styleName ? ` · ${item.styleName}` : ""}</strong><small>{item.levelName} · {item.day} · {item.time}</small></span><ChevronRight size={16} /></button>)}
+            </div>
+            <button type="button" className="secondary-button small free-trial-checkout-action" disabled={!selectedFreeTrialId} onClick={registerCheckoutFreeTrial}>{t("freeTrial.checkoutAction")} <ArrowUpRight size={15} /></button>
+          </section>}
           <div className="payment-method-panel"><div><p className="eyebrow">{t("purchaseSimulator.paymentMethodEyebrow")}</p><h3>{t("purchaseSimulator.paymentMethodTitle")}</h3><p>{t("purchaseSimulator.paymentMethodCopy")}</p></div><div className="payment-method-options" role="radiogroup" aria-label={t("purchaseSimulator.paymentMethodTitle")}><button type="button" role="radio" aria-checked={simulatorPaymentMethod === "card"} className={simulatorPaymentMethod === "card" ? "selected" : ""} onClick={() => setSimulatorPaymentMethod("card")}><CreditCard size={19} /><span><strong>{t("purchaseSimulator.cardPayment")}</strong><small>{t("purchaseSimulator.cardPaymentCopy")}</small></span></button><button type="button" role="radio" aria-checked={simulatorPaymentMethod === "class"} className={simulatorPaymentMethod === "class" ? "selected" : ""} onClick={() => setSimulatorPaymentMethod("class")}><Users size={19} /><span><strong>{t("purchaseSimulator.classPayment")}</strong><small>{t("purchaseSimulator.classPaymentCopy")}</small></span></button></div>{simulatorPaymentMethod === "card" && <div className="simulated-card"><CreditCard size={22} /><span><small>{t("purchaseSimulator.simulatedCard")}</small><strong>•••• •••• •••• 4242</strong></span><b>VISA</b></div>}{simulatorPaymentMethod === "class" && <div className="class-payment-notice"><ShieldCheck size={17} /><p>{t("purchaseSimulator.classApprovalNotice")}</p></div>}</div>
           <div className={`resolved-price${simulatorPrice === null ? " unavailable" : ""}`}><span><small>{isFullMonthPlan ? t("purchasePricing.fullPlanTitle") : `${t(`purchaseSimulator.plans.${simulatorPlan}.title`)} · ${simulatorPlan === "package" ? t("purchasePricing.flexible") : t(`purchasePricing.modes.${enrollmentMode}`)}`}</small><span className={`resolved-price-values${hasCategoryDiscount ? " discounted" : ""}`}>{hasCategoryDiscount && simulatorRegularPrice !== null && <del aria-label={t("purchasePricing.regularPriceLabel")}>{new Intl.NumberFormat(locale, { style: "currency", currency: "EUR" }).format(simulatorRegularPrice)}</del>}<strong>{simulatorPrice === null ? t("purchasePricing.unavailable") : new Intl.NumberFormat(locale, { style: "currency", currency: "EUR" }).format(simulatorPrice)}</strong></span></span><p>{simulatorCategory === "discount" ? t("purchasePricing.discountVerification") : simulatorCategory === "erasmus" ? t("purchasePricing.erasmusVerification") : t("purchasePricing.regularPrice")}</p></div>
           {membershipInCheckout && checkoutTotal !== null && <div className="membership-cart-total"><div><span>{t("membershipCheckout.coursePrice")}</span><strong>{new Intl.NumberFormat(locale, { style: "currency", currency: "EUR" }).format(simulatorPrice ?? 0)}</strong></div><div><span>{t("membershipCheckout.membershipPrice")}</span><strong>{new Intl.NumberFormat(locale, { style: "currency", currency: "EUR" }).format(membershipFee)}</strong></div><div className="total"><span>{t("membershipCheckout.combinedTotal")}</span><strong>{new Intl.NumberFormat(locale, { style: "currency", currency: "EUR" }).format(checkoutTotal)}</strong></div></div>}

@@ -7,6 +7,14 @@ export type CourseCartItem = {
   levelId: string;
   levelName: string;
   levelDescription?: string | null;
+  details?: {
+    teacher: string;
+    day: string;
+    time: string;
+    duration: string;
+    address: string;
+    content: string[];
+  };
   amount?: number | null;
   currency?: string;
 };

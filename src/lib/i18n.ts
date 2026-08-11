@@ -679,6 +679,70 @@ Object.assign(resources.en.translation.admin, { mobileAccessEyebrow: "ADMIN WORK
 Object.assign(resources.de.translation.admin, { mobileAccessEyebrow: "ADMIN-BEREICH", mobileAccessTitle: "Bitte ein Desktop-Gerät verwenden", mobileAccessCopy: "Das Admin-Dashboard ist für einen größeren Bildschirm optimiert, damit du Benutzer, Kurse, Zahlungen und QR-Zugänge sicher verwalten kannst. Öffne es bitte auf einem Desktop-Computer." });
 Object.assign(resources.es.translation.admin, { mobileAccessEyebrow: "ESPACIO ADMIN", mobileAccessTitle: "Accede desde un ordenador", mobileAccessCopy: "El dashboard de administración está optimizado para una pantalla grande, donde podrás gestionar usuarios, cursos, pagos y accesos QR de forma segura. Ábrelo desde un ordenador de escritorio." });
 
+Object.assign(resources.en.translation, { passwordRecovery: {
+  forgotLink: "Forgot your password?",
+  requestTitle: "Reset your password",
+  requestCopy: "Enter your email and we’ll send you a secure link to choose a new password.",
+  sendLink: "Send reset link",
+  backToSignIn: "Back to sign in",
+  sentTitle: "Check your inbox",
+  sentCopy: "If an account exists for this email, we’ve sent a password reset link. Check your spam folder too.",
+  unavailable: "Password recovery is unavailable until Supabase is configured.",
+  requestFailed: "We couldn’t send the reset email. Check the address and try again.",
+  updateTitle: "Choose a new password",
+  updateCopy: "Set a new password for your Baila Innsbruck account.",
+  newPassword: "New password",
+  confirmPassword: "Confirm new password",
+  updateButton: "Save new password",
+  mismatch: "The passwords do not match.",
+  minLength: "Use at least 6 characters.",
+  updateFailed: "We couldn’t update your password. Please request a new reset link.",
+  invalidLink: "This reset link is invalid or has expired. Request a new one.",
+  securityNote: "The reset link is handled by Supabase and can only be used by the account owner."
+} });
+Object.assign(resources.de.translation, { passwordRecovery: {
+  forgotLink: "Passwort vergessen?",
+  requestTitle: "Passwort zurücksetzen",
+  requestCopy: "Gib deine E-Mail ein und wir senden dir einen sicheren Link für ein neues Passwort.",
+  sendLink: "Reset-Link senden",
+  backToSignIn: "Zur Anmeldung zurück",
+  sentTitle: "Posteingang prüfen",
+  sentCopy: "Wenn ein Konto zu dieser E-Mail existiert, wurde ein Link zum Zurücksetzen gesendet. Prüfe auch den Spam-Ordner.",
+  unavailable: "Die Passwort-Wiederherstellung ist noch nicht verfügbar, weil Supabase nicht konfiguriert ist.",
+  requestFailed: "Die Reset-E-Mail konnte nicht gesendet werden. Prüfe die Adresse und versuche es erneut.",
+  updateTitle: "Neues Passwort wählen",
+  updateCopy: "Lege ein neues Passwort für dein Baila-Innsbruck-Konto fest.",
+  newPassword: "Neues Passwort",
+  confirmPassword: "Neues Passwort bestätigen",
+  updateButton: "Neues Passwort speichern",
+  mismatch: "Die Passwörter stimmen nicht überein.",
+  minLength: "Verwende mindestens 6 Zeichen.",
+  updateFailed: "Das Passwort konnte nicht geändert werden. Fordere bitte einen neuen Reset-Link an.",
+  invalidLink: "Dieser Reset-Link ist ungültig oder abgelaufen. Fordere einen neuen an.",
+  securityNote: "Der Reset-Link wird von Supabase verarbeitet und kann nur vom Kontoinhaber verwendet werden."
+} });
+Object.assign(resources.es.translation, { passwordRecovery: {
+  forgotLink: "¿Has olvidado tu contraseña?",
+  requestTitle: "Restablece tu contraseña",
+  requestCopy: "Escribe tu email y te enviaremos un enlace seguro para elegir una nueva contraseña.",
+  sendLink: "Enviar enlace",
+  backToSignIn: "Volver a iniciar sesión",
+  sentTitle: "Revisa tu bandeja de entrada",
+  sentCopy: "Si existe una cuenta con este email, hemos enviado un enlace para restablecer la contraseña. Revisa también el spam.",
+  unavailable: "La recuperación de contraseña no está disponible hasta configurar Supabase.",
+  requestFailed: "No hemos podido enviar el email de recuperación. Revisa la dirección e inténtalo de nuevo.",
+  updateTitle: "Elige una nueva contraseña",
+  updateCopy: "Crea una nueva contraseña para tu cuenta de Baila Innsbruck.",
+  newPassword: "Nueva contraseña",
+  confirmPassword: "Confirma la nueva contraseña",
+  updateButton: "Guardar nueva contraseña",
+  mismatch: "Las contraseñas no coinciden.",
+  minLength: "Utiliza al menos 6 caracteres.",
+  updateFailed: "No hemos podido actualizar la contraseña. Solicita un nuevo enlace de recuperación.",
+  invalidLink: "Este enlace de recuperación no es válido o ha caducado. Solicita uno nuevo.",
+  securityNote: "Supabase gestiona el enlace de recuperación y solo puede utilizarlo el propietario de la cuenta."
+} });
+
 void i18n.use(initReactI18next).init({ resources, lng: "en", fallbackLng: "en", interpolation: { escapeValue: false } });
 
 export default i18n;

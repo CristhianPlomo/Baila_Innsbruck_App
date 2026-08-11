@@ -120,6 +120,11 @@ function getAuthRedirectUrl() {
   return `${window.location.origin}/login`;
 }
 
+function isPasswordRecoveryLink() {
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  return hash.get("type") === "recovery";
+}
+
 function getAuthErrorMessage(error: unknown, fallback: string) {
   if (typeof error === "string" && error.trim()) return error;
   if (error && typeof error === "object") {
@@ -187,6 +192,7 @@ function App() {
   const [cartRemovalConfirmation, setCartRemovalConfirmation] = useState<CourseCartItem | null>(null);
   const [freeTrialRegistration, setFreeTrialRegistration] = useState<FreeTrialRegistration | null>(null);
   const [freeTrialConfirmation, setFreeTrialConfirmation] = useState<FreeTrialRegistration | null>(null);
+  const passwordRecovery = isPasswordRecoveryLink();
 
   useEffect(() => {
     void i18n.changeLanguage(language);
@@ -317,7 +323,7 @@ function App() {
             <Route path="/orders" element={<AuthenticatedRoute account={account} authReady={authReady}><OrdersPage account={account} cartItems={courseCart} onRemoveFromCart={removeFromCourseCart} onClearCart={() => setCourseCart([])} /></AuthenticatedRoute>} />
             <Route path="/admin/student-profile" element={<Navigate to="/profile" replace />} />
             <Route path="/admin/*" element={<AdminRoute account={account} />} />
-            <Route path="/login" element={<LoginPage onAuthenticated={setAccount} />} />
+            <Route path="/login" element={passwordRecovery ? <UpdatePasswordPage onAuthenticated={setAccount} /> : <LoginPage onAuthenticated={setAccount} />} />
             <Route path="/privacy" element={<LegalPage page="privacy" />} />
             <Route path="/imprint" element={<LegalPage page="imprint" />} />
             <Route path="/terms" element={<LegalPage page="terms" />} />
@@ -1436,7 +1442,7 @@ function OrdersPage({ account, cartItems, onRemoveFromCart, onClearCart }: { acc
 function LoginPage({ onAuthenticated }: { onAuthenticated: (account: Account) => void }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"login" | "register">("login");
+  const [mode, setMode] = useState<"login" | "register" | "reset">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -1452,7 +1458,7 @@ function LoginPage({ onAuthenticated }: { onAuthenticated: (account: Account) =>
     setProfile((current) => ({ ...current, [field]: value } as AccountProfile));
   }
 
-  function switchMode(nextMode: "login" | "register") {
+  function switchMode(nextMode: "login" | "register" | "reset") {
     setMode(nextMode);
     setStatus("idle");
     setMessage("");
@@ -1492,6 +1498,28 @@ function LoginPage({ onAuthenticated }: { onAuthenticated: (account: Account) =>
     if (mode === "register" && !legalAccepted) {
       setStatus("error");
       setMessage(t("legal.consentRequired"));
+      return;
+    }
+
+    if (mode === "reset") {
+      if (!supabase) {
+        setStatus("error");
+        setMessage(t("passwordRecovery.unavailable"));
+        return;
+      }
+      try {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: getAuthRedirectUrl() });
+        if (error) {
+          setStatus("error");
+          setMessage(getAuthErrorMessage(error, t("passwordRecovery.requestFailed")));
+          return;
+        }
+        setStatus("success");
+        setMessage(t("passwordRecovery.sentCopy"));
+      } catch (error) {
+        setStatus("error");
+        setMessage(getAuthErrorMessage(error, t("passwordRecovery.requestFailed")));
+      }
       return;
     }
 
@@ -1564,32 +1592,96 @@ function LoginPage({ onAuthenticated }: { onAuthenticated: (account: Account) =>
   }
 
   const isRegister = mode === "register";
+  const isReset = mode === "reset";
   return (
     <div className="auth-page"><div className={`auth-panel ${isRegister ? "auth-panel-wide" : ""}`}>
-      <div className="auth-mark">{isRegister ? <UserPlus size={21} /> : <LogIn size={21} />}</div>
+      <div className="auth-mark">{isRegister ? <UserPlus size={21} /> : isReset ? <MailCheck size={21} /> : <LogIn size={21} />}</div>
       <p className="eyebrow">{t("appName")}</p>
-      <h1>{isRegister ? t("registerTitle") : t("loginTitle")}</h1>
-      <p className="lead">{isRegister ? t("registerCopy") : t("loginCopy")}</p>
-      <div className="auth-switch" role="tablist" aria-label={t("authOptions")}>
+      <h1>{isRegister ? t("registerTitle") : isReset ? t("passwordRecovery.requestTitle") : t("loginTitle")}</h1>
+      <p className="lead">{isRegister ? t("registerCopy") : isReset ? t("passwordRecovery.requestCopy") : t("loginCopy")}</p>
+      {isReset ? <button className="text-button auth-back-link" type="button" onClick={() => switchMode("login")}><ChevronLeft size={15} />{t("passwordRecovery.backToSignIn")}</button> : <div className="auth-switch" role="tablist" aria-label={t("authOptions")}>
         <button type="button" className={mode === "login" ? "active" : ""} onClick={() => switchMode("login")}>{t("signIn")}</button>
         <button type="button" className={mode === "register" ? "active" : ""} onClick={() => switchMode("register")}>{t("createAccount")}</button>
-      </div>
+      </div>}
       <form onSubmit={handleSubmit}>
         {isRegister && <div className="form-grid"><div><label htmlFor="first-name">{t("firstName")}</label><input id="first-name" type="text" value={profile.firstName} onChange={(event) => updateProfile("firstName", event.target.value)} autoComplete="given-name" required /></div><div><label htmlFor="last-name">{t("lastName")}</label><input id="last-name" type="text" value={profile.lastName} onChange={(event) => updateProfile("lastName", event.target.value)} autoComplete="family-name" required /></div></div>}
         <label htmlFor="email">{t("emailUser")}</label>
         <input id="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" autoComplete="email" required />
         {isRegister && <><label htmlFor="address">{t("address")}</label><input id="address" type="text" value={profile.address} onChange={(event) => updateProfile("address", event.target.value)} autoComplete="street-address" required /><div className="form-grid form-grid-three"><div><label htmlFor="postal-code">{t("postalCode")}</label><input id="postal-code" type="text" value={profile.postalCode} onChange={(event) => updateProfile("postalCode", event.target.value)} autoComplete="postal-code" inputMode="numeric" required /></div><div><label htmlFor="city">{t("city")}</label><input id="city" type="text" value={profile.city} onChange={(event) => updateProfile("city", event.target.value)} autoComplete="address-level2" required /></div><div><label htmlFor="phone">{t("phone")}</label><input id="phone" type="tel" value={profile.phone} onChange={(event) => updateProfile("phone", event.target.value)} autoComplete="tel" /></div></div><div><span className="field-label">{t("danceRole")}</span><div className="role-select"><label><input type="radio" name="dance-role" value="leader" checked={profile.danceRole === "leader"} onChange={() => updateProfile("danceRole", "leader")} />{t("roles.leader")}</label><label><input type="radio" name="dance-role" value="follower" checked={profile.danceRole === "follower"} onChange={() => updateProfile("danceRole", "follower")} />{t("roles.follower")}</label><label><input type="radio" name="dance-role" value="both" checked={profile.danceRole === "both"} onChange={() => updateProfile("danceRole", "both")} />{t("roles.both")}</label></div></div><p className="field-help"><Users size={14} />{t("danceRoleHelp")}</p></>}
-        <label htmlFor="password">{t("password")}</label>
-        <div className="password-field"><input id="password" type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={isRegister ? "new-password" : "current-password"} minLength={6} required /><button className="password-toggle" type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? t("hidePassword") : t("showPassword")} aria-pressed={showPassword}>{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div>
+        {!isReset && <><label htmlFor="password">{t("password")}</label>
+        <div className="password-field"><input id="password" type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={isRegister ? "new-password" : "current-password"} minLength={6} required /><button className="password-toggle" type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? t("hidePassword") : t("showPassword")} aria-pressed={showPassword}>{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div></>}
+        {mode === "login" && <button className="text-button auth-forgot-link" type="button" onClick={() => switchMode("reset")}>{t("passwordRecovery.forgotLink")}</button>}
         {isRegister && <><label htmlFor="confirm-password">{t("confirmPassword")}</label><div className="password-field"><input id="confirm-password" type={showConfirmPassword ? "text" : "password"} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} autoComplete="new-password" minLength={6} required /><button className="password-toggle" type="button" onClick={() => setShowConfirmPassword((visible) => !visible)} aria-label={showConfirmPassword ? t("hidePassword") : t("showPassword")} aria-pressed={showConfirmPassword}>{showConfirmPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div></>}
         {isRegister && <label className="legal-consent"><input type="checkbox" checked={legalAccepted} onChange={(event) => setLegalAccepted(event.target.checked)} required /><span>{t("legal.consentPrefix")} <Link to="/privacy" target="_blank" rel="noreferrer">{t("legal.privacyLink")}</Link> {t("legal.consentMiddle")} <Link to="/terms" target="_blank" rel="noreferrer">{t("legal.termsLink")}</Link>{t("legal.consentSuffix")}</span></label>}
-        <button className="primary-button full" type="submit" disabled={status === "loading"}>{status === "loading" ? t("working") : isRegister ? t("createAccount") : t("signIn")} <ArrowUpRight size={18} /></button>
+        <button className="primary-button full" type="submit" disabled={status === "loading"}>{status === "loading" ? t("working") : isRegister ? t("createAccount") : isReset ? t("passwordRecovery.sendLink") : t("signIn")} <ArrowUpRight size={18} /></button>
       </form>
       {message && <p className={`form-message ${status}`} role="status">{status === "success" && <Check size={15} />}{message}</p>}
+      {isReset && status === "success" && <div className="confirmation-box"><MailCheck size={19} /><div><strong>{t("passwordRecovery.sentTitle")}</strong><p>{t("passwordRecovery.sentCopy")}</p></div></div>}
       {pendingConfirmationEmail && supabase && <div className="confirmation-box"><MailCheck size={19} /><div><strong>{t("confirmationTitle")}</strong><p>{t("confirmationCopy")}</p><button className="text-button" type="button" onClick={() => void resendConfirmation()} disabled={status === "loading"}>{t("resendConfirmation")}</button></div></div>}
-      <p className="auth-footnote">{isSupabaseConfigured ? t("supabaseReady") : t("demoModeCopy")}</p>
     </div></div>
   );
+}
+
+function UpdatePasswordPage({ onAuthenticated }: { onAuthenticated: (account: Account) => void }) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [message, setMessage] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (password !== confirmPassword) {
+      setStatus("error");
+      setMessage(t("passwordRecovery.mismatch"));
+      return;
+    }
+    if (password.length < 6) {
+      setStatus("error");
+      setMessage(t("passwordRecovery.minLength"));
+      return;
+    }
+    if (!supabase) {
+      setStatus("error");
+      setMessage(t("passwordRecovery.unavailable"));
+      return;
+    }
+
+    setStatus("loading");
+    setMessage("");
+    try {
+      const { data, error } = await supabase.auth.updateUser({ password });
+      if (error || !data.user) {
+        setStatus("error");
+        setMessage(getAuthErrorMessage(error, t("passwordRecovery.updateFailed")));
+        return;
+      }
+      onAuthenticated(accountFromUser(data.user));
+      navigate("/profile", { replace: true });
+    } catch (error) {
+      setStatus("error");
+      setMessage(getAuthErrorMessage(error, t("passwordRecovery.invalidLink")));
+    }
+  }
+
+  return <div className="auth-page"><div className="auth-panel">
+    <div className="auth-mark"><ShieldCheck size={21} /></div>
+    <p className="eyebrow">{t("appName")}</p>
+    <h1>{t("passwordRecovery.updateTitle")}</h1>
+    <p className="lead">{t("passwordRecovery.updateCopy")}</p>
+    <form onSubmit={handleSubmit}>
+      <label htmlFor="new-password">{t("passwordRecovery.newPassword")}</label>
+      <div className="password-field"><input id="new-password" type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" minLength={6} required /><button className="password-toggle" type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? t("hidePassword") : t("showPassword")} aria-pressed={showPassword}>{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div>
+      <label htmlFor="confirm-new-password">{t("passwordRecovery.confirmPassword")}</label>
+      <div className="password-field"><input id="confirm-new-password" type={showConfirmPassword ? "text" : "password"} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} autoComplete="new-password" minLength={6} required /><button className="password-toggle" type="button" onClick={() => setShowConfirmPassword((visible) => !visible)} aria-label={showConfirmPassword ? t("hidePassword") : t("showPassword")} aria-pressed={showConfirmPassword}>{showConfirmPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div>
+      <button className="primary-button full" type="submit" disabled={status === "loading"}>{status === "loading" ? t("working") : t("passwordRecovery.updateButton")} <ArrowUpRight size={18} /></button>
+    </form>
+    {message && <p className="form-message error" role="alert">{message}</p>}
+    <p className="auth-footnote">{t("passwordRecovery.securityNote")}</p>
+  </div></div>;
 }
 
 function PageIntro({ eyebrow, title, copy }: { eyebrow: string; title: string; copy: string }) { return <div className="page-intro"><p className="eyebrow"><span className="eyebrow-dot" /> {eyebrow}</p><h1>{title}</h1><p className="lead">{copy}</p></div>; }

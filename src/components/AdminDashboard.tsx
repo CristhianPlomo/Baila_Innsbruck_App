@@ -53,6 +53,7 @@ import { isSupabaseConfigured } from "../lib/supabase";
 import AdminQrControl from "./AdminQrControl";
 import AdminLogs from "./AdminLogs";
 import ConfirmDialog from "./ConfirmDialog";
+import PasswordChangeCard from "./PasswordChangeCard";
 
 type AdminTab = "overview" | "users" | "members" | "events" | "classes" | "orders" | "manual-user" | "qr-control" | "logs" | "settings";
 type EventCategory = "all" | "party" | "workshop" | "festival";
@@ -414,7 +415,7 @@ export default function AdminDashboard({ account }: { account: Account }) {
       {activeTab === "orders" && (isWorkspaceLoading ? <AdminLoadingPanel /> : <AdminOrders orders={orders} onStatusChange={updateOrderStatus} />)}
       {activeTab === "qr-control" && <AdminQrControl />}
       {activeTab === "logs" && <AdminLogs />}
-      {activeTab === "settings" && <AdminSettings />}
+      {activeTab === "settings" && <AdminSettings account={account} />}
       <ConfirmDialog open={Boolean(confirmation)} eyebrow={t("confirmations.eyebrow")} title={confirmation?.title ?? ""} copy={confirmation?.copy ?? ""} confirmLabel={confirmation?.confirmLabel ?? t("confirmations.confirm")} cancelLabel={t("confirmations.cancel")} destructive={confirmation?.destructive} onConfirm={confirmPendingAction} onCancel={() => setConfirmation(null)} />
     </div>
   );
@@ -766,7 +767,7 @@ export function AdminMembers({ account }: { account: Account }) {
   return <section className="admin-panel admin-list-panel"><AdminListHeader eyebrow={t("admin.membersEyebrow")} title={t("admin.membersTitle")} actionLabel={t("admin.inviteMember")} onAction={() => undefined} /><div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>{t("admin.table.member")}</th><th>{t("admin.table.role")}</th><th>{t("admin.table.status")}</th><th>{t("admin.table.access")}</th></tr></thead><tbody>{members.map((member) => <tr key={member.id}><td><strong>{member.name}</strong><small>{member.email}</small></td><td><span className="role-pill"><Users size={13} />{t(`roles.${member.role}`)}</span></td><td><span className={`admin-status ${member.status}`}>{t(`admin.status.${member.status}`)}</span></td><td><button className="secondary-button compact" type="button"><UserCog size={14} />{t("admin.manage")}</button></td></tr>)}</tbody></table></div></section>;
 }
 
-function AdminSettings() {
+function AdminSettings({ account }: { account: Account }) {
   const { t } = useTranslation();
   const [settings, setSettings] = useState<AdminStudioSettings>(() => getAdminStudioSettings());
   const [isDirty, setIsDirty] = useState(false);
@@ -845,6 +846,7 @@ function AdminSettings() {
               <SettingToggle icon={Users} label={t("admin.settings.toggles.capacity")} copy={t("admin.settings.toggles.capacityCopy")} checked={settings.lowCapacityNotifications} onChange={(checked) => updateSetting("lowCapacityNotifications", checked)} />
             </div>
           </section>
+
         </div>
 
         <aside className="admin-settings-sidebar">
@@ -855,6 +857,7 @@ function AdminSettings() {
       </div>
       <div className="admin-settings-footer"><button type="button" className="secondary-button" onClick={handleReset}><RotateCcw size={15} />{t("admin.settings.reset")}</button><span>{isDirty ? t("admin.settings.unsaved") : t("admin.settings.savedLocal")}</span><button type="submit" className="primary-button small" disabled={!isDirty}><Save size={16} />{t("admin.save")}</button></div>
     </form>
+    <PasswordChangeCard account={account} variant="admin" />
   </section>
   <ConfirmDialog open={Boolean(confirmation)} eyebrow={t("confirmations.eyebrow")} title={confirmation?.title ?? ""} copy={confirmation?.copy ?? ""} confirmLabel={confirmation?.confirmLabel ?? t("confirmations.confirm")} cancelLabel={t("confirmations.cancel")} destructive={confirmation?.destructive} onConfirm={confirmPendingChange} onCancel={() => setConfirmation(null)} />
   </>;

@@ -178,6 +178,7 @@ function accountFromUser(user: { id: string; email?: string; user_metadata: Reco
 function App() {
   const { i18n, t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const [language, setLanguage] = useState<Language>((localStorage.getItem("baila-language") as Language) || "en");
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem("baila-theme") === "dark");
   const [reducedMotion, setReducedMotion] = useState(() => localStorage.getItem("baila-reduced-motion") === "true");
@@ -198,6 +199,12 @@ function App() {
   const [freeTrialRegistration, setFreeTrialRegistration] = useState<FreeTrialRegistration | null>(null);
   const [freeTrialConfirmation, setFreeTrialConfirmation] = useState<FreeTrialRegistration | null>(null);
   const [passwordRecovery, setPasswordRecovery] = useState(isPasswordRecoveryLink);
+
+  useEffect(() => {
+    if (passwordRecovery && location.pathname !== "/login") {
+      navigate("/login", { replace: true });
+    }
+  }, [location.pathname, navigate, passwordRecovery]);
 
   useEffect(() => {
     void i18n.changeLanguage(language);

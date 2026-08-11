@@ -1186,7 +1186,9 @@ function OrdersPage({ account, freeTrialRegistration, onRegisterFreeTrial, cartI
   const availableSimulatorPlans = enrollmentMode === "full" ? simulatorPlans.filter((plan) => plan.kind === "monthly" || plan.kind === "package") : simulatorPlans;
   const storedFreeTrialRegistration = account ? getFreeTrialForAccount(account) : null;
   const checkoutFreeTrialRegistration = freeTrialRegistration ?? storedFreeTrialRegistration;
-  const freeTrialCandidates = account && !isAdminAccount(account) && !checkoutFreeTrialRegistration
+  const hasPreviousCoursePurchase = !purchaseLoading && !purchaseUnavailable && purchases.some((purchase) => purchase.kind !== "membership" && purchase.status !== "refunded");
+  const canOfferCheckoutFreeTrial = !purchaseLoading && !purchaseUnavailable && !hasPreviousCoursePurchase;
+  const freeTrialCandidates = account && !isAdminAccount(account) && !checkoutFreeTrialRegistration && canOfferCheckoutFreeTrial
     ? cartItems.map((item) => toFreeTrialClass(item)).filter((item): item is FreeTrialClass => Boolean(item))
     : [];
 

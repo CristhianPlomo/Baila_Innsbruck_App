@@ -1222,7 +1222,7 @@ html[data-theme="dark"] .orders-view-navigation button.active { color:#0d0d0d; }
 .admin-manual-section-icon { display:grid; place-items:center; width:35px; height:35px; flex:none; border-radius:10px; background:rgba(117,191,178,.16); color:#287b67; }
 .admin-manual-section .form-grid { margin-top:0; }
 .admin-manual-section .form-grid label { min-width:0; }
-.form-help { color:var(--muted); font-size:.55rem; font-weight:400; line-height:1.4; }
+.form-help { color:var(--muted); font-size:.55rem; font-weight:400; line-height:1.4; }.password-requirement { display:block; margin-top:-4px; color:var(--muted); font-size:.58rem; font-weight:500; line-height:1.45; }.password-requirement.invalid { color:#a54736; } html[data-theme="dark"] .password-requirement.invalid { color:#e58d7d; }
 .admin-checkbox-field { align-content:start; }
 .admin-checkbox-row { display:flex; align-items:center; gap:8px; color:var(--ink); font-size:.66rem; font-weight:600; }
 .admin-checkbox-row input { width:16px; height:16px; accent-color:var(--gold-deep); }

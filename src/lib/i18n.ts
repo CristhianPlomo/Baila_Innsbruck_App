@@ -695,7 +695,7 @@ Object.assign(resources.en.translation, { passwordRecovery: {
   confirmPassword: "Confirm new password",
   updateButton: "Save new password",
   mismatch: "The passwords do not match.",
-  minLength: "Use at least 6 characters.",
+  minLength: "Use at least 8 characters.",
   updateFailed: "We couldn’t update your password. Please request a new reset link.",
   invalidLink: "This reset link is invalid or has expired. Request a new one.",
   securityNote: "The reset link is handled by Supabase and can only be used by the account owner."
@@ -716,7 +716,7 @@ Object.assign(resources.de.translation, { passwordRecovery: {
   confirmPassword: "Neues Passwort bestätigen",
   updateButton: "Neues Passwort speichern",
   mismatch: "Die Passwörter stimmen nicht überein.",
-  minLength: "Verwende mindestens 6 Zeichen.",
+  minLength: "Verwende mindestens 8 Zeichen.",
   updateFailed: "Das Passwort konnte nicht geändert werden. Fordere bitte einen neuen Reset-Link an.",
   invalidLink: "Dieser Reset-Link ist ungültig oder abgelaufen. Fordere einen neuen an.",
   securityNote: "Der Reset-Link wird von Supabase verarbeitet und kann nur vom Kontoinhaber verwendet werden."
@@ -737,11 +737,15 @@ Object.assign(resources.es.translation, { passwordRecovery: {
   confirmPassword: "Confirma la nueva contraseña",
   updateButton: "Guardar nueva contraseña",
   mismatch: "Las contraseñas no coinciden.",
-  minLength: "Utiliza al menos 6 caracteres.",
+  minLength: "Utiliza al menos 8 caracteres.",
   updateFailed: "No hemos podido actualizar la contraseña. Solicita un nuevo enlace de recuperación.",
   invalidLink: "Este enlace de recuperación no es válido o ha caducado. Solicita uno nuevo.",
   securityNote: "Supabase gestiona el enlace de recuperación y solo puede utilizarlo el propietario de la cuenta."
 } });
+
+Object.assign(resources.en.translation, { passwordRequirements: "Use at least 8 characters with letters and numbers. A dot or hyphen can make it stronger.", passwordWeak: "Choose a stronger password with at least 8 characters, including a letter and a number." });
+Object.assign(resources.de.translation, { passwordRequirements: "Verwende mindestens 8 Zeichen mit Buchstaben und Zahlen. Ein Punkt oder Bindestrich macht es noch stärker.", passwordWeak: "Wähle ein stärkeres Passwort mit mindestens 8 Zeichen, darunter ein Buchstabe und eine Zahl." });
+Object.assign(resources.es.translation, { passwordRequirements: "Usa al menos 8 caracteres con letras y números. Un punto o un guion puede hacerla más segura.", passwordWeak: "Elige una contraseña más segura: mínimo 8 caracteres, con al menos una letra y un número." });
 
 void i18n.use(initReactI18next).init({ resources, lng: "en", fallbackLng: "en", interpolation: { escapeValue: false } });
 

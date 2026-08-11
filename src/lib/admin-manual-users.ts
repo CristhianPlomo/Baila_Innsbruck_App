@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { isStrongPassword } from "./password-policy";
 
 export type ManualAccessMode = "email-invite" | "temporary-password";
 export type ManualCommercialCategory = "regular" | "student" | "member" | "erasmus";
@@ -45,7 +46,7 @@ function isAllowedEndpoint(value: string) {
 export function validateManualUserDraft(draft: ManualUserDraft) {
   if (!draft.firstName.trim() || !draft.lastName.trim() || !draft.email.trim() || !draft.address.trim() || !draft.postalCode.trim() || !draft.city.trim()) return false;
   if (draft.commercialCategory !== "regular" && !draft.categoryVerified) return false;
-  if (draft.accessMode === "temporary-password" && draft.temporaryPassword.length < 8) return false;
+  if (draft.accessMode === "temporary-password" && !isStrongPassword(draft.temporaryPassword)) return false;
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(draft.email.trim());
 }
 

@@ -50,6 +50,7 @@ import { fallbackCatalog, getCourseCatalog, type CourseGroup } from "./lib/catal
 import { readCourseCart, writeCourseCart, type CourseCartItem } from "./lib/cart";
 import { getFreeTrialForAccount, registerFreeTrial, type FreeTrialClass, type FreeTrialRegistration } from "./lib/free-trial";
 import { getSimulatedCheckoutPrice, getUserPurchaseHistory, rejectedPurchaseRetentionMs, simulateCoursePurchase, simulateMembershipPurchase, simulatorPlans, type PurchaseHistoryResult, type PurchaseKind, type SimulatedPaymentMethod, type UserPurchase } from "./lib/purchases";
+import { isStrongPassword, minimumPasswordLength } from "./lib/password-policy";
 import { getEnrollmentMode, getPlanPrice, getVerifiedCommercialCategory } from "./lib/pricing";
 import { isStripeCheckoutConfigured, redirectToStripeCheckout } from "./lib/stripe-checkout";
 import { fallbackFeaturedEvents, homeOffers, type HomeFeaturedEvent } from "./lib/home-content";
@@ -1507,6 +1508,12 @@ function LoginPage({ onAuthenticated }: { onAuthenticated: (account: Account) =>
       return;
     }
 
+    if (mode === "register" && !isStrongPassword(password)) {
+      setStatus("error");
+      setMessage(t("passwordWeak"));
+      return;
+    }
+
     if (mode === "register" && !legalAccepted) {
       setStatus("error");
       setMessage(t("legal.consentRequired"));
@@ -1621,9 +1628,9 @@ function LoginPage({ onAuthenticated }: { onAuthenticated: (account: Account) =>
         <input id="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" autoComplete="email" required />
         {isRegister && <><label htmlFor="address">{t("address")}</label><input id="address" type="text" value={profile.address} onChange={(event) => updateProfile("address", event.target.value)} autoComplete="street-address" required /><div className="form-grid form-grid-three"><div><label htmlFor="postal-code">{t("postalCode")}</label><input id="postal-code" type="text" value={profile.postalCode} onChange={(event) => updateProfile("postalCode", event.target.value)} autoComplete="postal-code" inputMode="numeric" required /></div><div><label htmlFor="city">{t("city")}</label><input id="city" type="text" value={profile.city} onChange={(event) => updateProfile("city", event.target.value)} autoComplete="address-level2" required /></div><div><label htmlFor="phone">{t("phone")}</label><input id="phone" type="tel" value={profile.phone} onChange={(event) => updateProfile("phone", event.target.value)} autoComplete="tel" /></div></div><div><span className="field-label">{t("danceRole")}</span><div className="role-select"><label><input type="radio" name="dance-role" value="leader" checked={profile.danceRole === "leader"} onChange={() => updateProfile("danceRole", "leader")} />{t("roles.leader")}</label><label><input type="radio" name="dance-role" value="follower" checked={profile.danceRole === "follower"} onChange={() => updateProfile("danceRole", "follower")} />{t("roles.follower")}</label><label><input type="radio" name="dance-role" value="both" checked={profile.danceRole === "both"} onChange={() => updateProfile("danceRole", "both")} />{t("roles.both")}</label></div></div><p className="field-help"><Users size={14} />{t("danceRoleHelp")}</p></>}
         {!isReset && <><label htmlFor="password">{t("password")}</label>
-        <div className="password-field"><input id="password" type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={isRegister ? "new-password" : "current-password"} minLength={6} required /><button className="password-toggle" type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? t("hidePassword") : t("showPassword")} aria-pressed={showPassword}>{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div></>}
+        <div className="password-field"><input id="password" type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={isRegister ? "new-password" : "current-password"} minLength={isRegister ? minimumPasswordLength : 6} required aria-describedby={isRegister ? "password-requirements" : undefined} /><button className="password-toggle" type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? t("hidePassword") : t("showPassword")} aria-pressed={showPassword}>{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div>{isRegister && <small id="password-requirements" className={`password-requirement${password && !isStrongPassword(password) ? " invalid" : ""}`}>{t("passwordRequirements")}</small>}</>}
         {mode === "login" && <button className="text-button auth-forgot-link" type="button" onClick={() => switchMode("reset")}>{t("passwordRecovery.forgotLink")}</button>}
-        {isRegister && <><label htmlFor="confirm-password">{t("confirmPassword")}</label><div className="password-field"><input id="confirm-password" type={showConfirmPassword ? "text" : "password"} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} autoComplete="new-password" minLength={6} required /><button className="password-toggle" type="button" onClick={() => setShowConfirmPassword((visible) => !visible)} aria-label={showConfirmPassword ? t("hidePassword") : t("showPassword")} aria-pressed={showConfirmPassword}>{showConfirmPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div></>}
+        {isRegister && <><label htmlFor="confirm-password">{t("confirmPassword")}</label><div className="password-field"><input id="confirm-password" type={showConfirmPassword ? "text" : "password"} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} autoComplete="new-password" minLength={minimumPasswordLength} required /><button className="password-toggle" type="button" onClick={() => setShowConfirmPassword((visible) => !visible)} aria-label={showConfirmPassword ? t("hidePassword") : t("showPassword")} aria-pressed={showConfirmPassword}>{showConfirmPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div></>}
         {isRegister && <label className="legal-consent"><input type="checkbox" checked={legalAccepted} onChange={(event) => setLegalAccepted(event.target.checked)} required /><span>{t("legal.consentPrefix")} <Link to="/privacy" target="_blank" rel="noreferrer">{t("legal.privacyLink")}</Link> {t("legal.consentMiddle")} <Link to="/terms" target="_blank" rel="noreferrer">{t("legal.termsLink")}</Link>{t("legal.consentSuffix")}</span></label>}
         <button className="primary-button full" type="submit" disabled={status === "loading"}>{status === "loading" ? t("working") : isRegister ? t("createAccount") : isReset ? t("passwordRecovery.sendLink") : t("signIn")} <ArrowUpRight size={18} /></button>
       </form>
@@ -1651,9 +1658,14 @@ function UpdatePasswordPage({ onAuthenticated }: { onAuthenticated: (account: Ac
       setMessage(t("passwordRecovery.mismatch"));
       return;
     }
-    if (password.length < 6) {
+    if (password.length < minimumPasswordLength) {
       setStatus("error");
       setMessage(t("passwordRecovery.minLength"));
+      return;
+    }
+    if (!isStrongPassword(password)) {
+      setStatus("error");
+      setMessage(t("passwordWeak"));
       return;
     }
     if (!supabase) {
@@ -1686,9 +1698,9 @@ function UpdatePasswordPage({ onAuthenticated }: { onAuthenticated: (account: Ac
     <p className="lead">{t("passwordRecovery.updateCopy")}</p>
     <form onSubmit={handleSubmit}>
       <label htmlFor="new-password">{t("passwordRecovery.newPassword")}</label>
-      <div className="password-field"><input id="new-password" type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" minLength={6} required /><button className="password-toggle" type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? t("hidePassword") : t("showPassword")} aria-pressed={showPassword}>{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div>
+      <div className="password-field"><input id="new-password" type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" minLength={minimumPasswordLength} required aria-describedby="new-password-requirements" /><button className="password-toggle" type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? t("hidePassword") : t("showPassword")} aria-pressed={showPassword}>{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div><small id="new-password-requirements" className={`password-requirement${password && !isStrongPassword(password) ? " invalid" : ""}`}>{t("passwordRequirements")}</small>
       <label htmlFor="confirm-new-password">{t("passwordRecovery.confirmPassword")}</label>
-      <div className="password-field"><input id="confirm-new-password" type={showConfirmPassword ? "text" : "password"} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} autoComplete="new-password" minLength={6} required /><button className="password-toggle" type="button" onClick={() => setShowConfirmPassword((visible) => !visible)} aria-label={showConfirmPassword ? t("hidePassword") : t("showPassword")} aria-pressed={showConfirmPassword}>{showConfirmPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div>
+      <div className="password-field"><input id="confirm-new-password" type={showConfirmPassword ? "text" : "password"} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} autoComplete="new-password" minLength={minimumPasswordLength} required /><button className="password-toggle" type="button" onClick={() => setShowConfirmPassword((visible) => !visible)} aria-label={showConfirmPassword ? t("hidePassword") : t("showPassword")} aria-pressed={showConfirmPassword}>{showConfirmPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div>
       <button className="primary-button full" type="submit" disabled={status === "loading"}>{status === "loading" ? t("working") : t("passwordRecovery.updateButton")} <ArrowUpRight size={18} /></button>
     </form>
     {message && <p className="form-message error" role="alert">{message}</p>}

@@ -125,9 +125,10 @@ function isPasswordRecoveryLink() {
   const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
   const query = new URLSearchParams(window.location.search);
   // Supabase's browser flow normally uses a hash, while a PKCE redirect can
-  // arrive with a one-time `code` query parameter. Support both formats so
+  // arrive with a one-time `code` query parameter. Custom email templates can
+  // also send a one-time `token_hash` query parameter. Support all formats so
   // the recovery screen is rendered before the auth event finishes resolving.
-  return hash.get("type") === "recovery" || query.get("type") === "recovery" || query.has("code");
+  return hash.get("type") === "recovery" || query.get("type") === "recovery" || query.has("code") || query.has("token_hash");
 }
 
 function getAuthErrorMessage(error: unknown, fallback: string) {
@@ -203,9 +204,12 @@ function App() {
 
   useEffect(() => {
     if (recoveryRequested && location.pathname !== "/login") {
-      navigate("/login", { replace: true });
+      // Keep the one-time recovery parameters when the email template sends
+      // the user to /auth. Dropping them here makes the reset session
+      // impossible to establish on the next route.
+      navigate({ pathname: "/login", search: location.search, hash: location.hash }, { replace: true });
     }
-  }, [location.pathname, navigate, recoveryRequested]);
+  }, [location.hash, location.pathname, location.search, navigate, recoveryRequested]);
 
   useEffect(() => {
     void i18n.changeLanguage(language);
@@ -1789,6 +1793,9 @@ function UpdatePasswordPage({ onAuthenticated, onCompleted }: { onAuthenticated:
       const cleanUrl = new URL(window.location.href);
       cleanUrl.hash = "";
       cleanUrl.searchParams.delete("code");
+      cleanUrl.searchParams.delete("token_hash");
+      cleanUrl.searchParams.delete("type");
+      cleanUrl.searchParams.delete("reset");
       window.history.replaceState({}, document.title, cleanUrl.toString());
     }
 
@@ -1804,6 +1811,12 @@ function UpdatePasswordPage({ onAuthenticated, onCompleted }: { onAuthenticated:
         const code = new URLSearchParams(window.location.search).get("code");
         if (code) {
           const { error } = await authClient.auth.exchangeCodeForSession(code);
+          if (error) throw error;
+        }
+
+        const tokenHash = new URLSearchParams(window.location.search).get("token_hash");
+        if (tokenHash) {
+          const { error } = await authClient.auth.verifyOtp({ token_hash: tokenHash, type: "recovery" });
           if (error) throw error;
         }
 

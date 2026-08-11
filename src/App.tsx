@@ -123,7 +123,11 @@ function getAuthRedirectUrl() {
 
 function isPasswordRecoveryLink() {
   const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-  return hash.get("type") === "recovery";
+  const query = new URLSearchParams(window.location.search);
+  // Supabase's browser flow normally uses a hash, while a PKCE redirect can
+  // arrive with a one-time `code` query parameter. Support both formats so
+  // the recovery screen is rendered before the auth event finishes resolving.
+  return hash.get("type") === "recovery" || query.get("type") === "recovery" || query.has("code");
 }
 
 function getAuthErrorMessage(error: unknown, fallback: string) {
@@ -193,7 +197,7 @@ function App() {
   const [cartRemovalConfirmation, setCartRemovalConfirmation] = useState<CourseCartItem | null>(null);
   const [freeTrialRegistration, setFreeTrialRegistration] = useState<FreeTrialRegistration | null>(null);
   const [freeTrialConfirmation, setFreeTrialConfirmation] = useState<FreeTrialRegistration | null>(null);
-  const passwordRecovery = isPasswordRecoveryLink();
+  const [passwordRecovery, setPasswordRecovery] = useState(isPasswordRecoveryLink);
 
   useEffect(() => {
     void i18n.changeLanguage(language);
@@ -263,7 +267,8 @@ function App() {
     }).finally(() => {
       if (mounted) setAuthReady(true);
     });
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") setPasswordRecovery(true);
       setAuthReady(true);
       if (session?.user) {
         const sessionAccount = accountFromUser(session.user);
@@ -319,12 +324,12 @@ function App() {
             <Route path="/courses/:courseSlug" element={<CourseDetailPage account={account} freeTrialRegistration={freeTrialRegistration} onRegisterFreeTrial={addFreeTrialClass} onAddToCart={addToCourseCart} cartItems={courseCart} />} />
             <Route path="/schedule" element={<SchedulePage />} />
             <Route path="/profile" element={<AuthenticatedRoute account={account} authReady={authReady}><ProfilePage account={account} freeTrialRegistration={freeTrialRegistration} onSignOut={handleSignOut} /></AuthenticatedRoute>} />
-            <Route path="/settings" element={<AuthenticatedRoute account={account} authReady={authReady}><UserSettingsPage language={language} darkMode={darkMode} reducedMotion={reducedMotion} classReminders={classReminders} classReminderTiming={classReminderTiming} newActivityNotifications={newActivityNotifications} emailUpdates={emailUpdates} onLanguageChange={setLanguage} onDarkModeChange={setDarkMode} onReducedMotionChange={setReducedMotion} onClassRemindersChange={setClassReminders} onClassReminderTimingChange={setClassReminderTiming} onNewActivityNotificationsChange={setNewActivityNotifications} onEmailUpdatesChange={setEmailUpdates} /></AuthenticatedRoute>} />
+            <Route path="/settings" element={<AuthenticatedRoute account={account} authReady={authReady}><UserSettingsPage account={account!} language={language} darkMode={darkMode} reducedMotion={reducedMotion} classReminders={classReminders} classReminderTiming={classReminderTiming} newActivityNotifications={newActivityNotifications} emailUpdates={emailUpdates} onLanguageChange={setLanguage} onDarkModeChange={setDarkMode} onReducedMotionChange={setReducedMotion} onClassRemindersChange={setClassReminders} onClassReminderTimingChange={setClassReminderTiming} onNewActivityNotificationsChange={setNewActivityNotifications} onEmailUpdatesChange={setEmailUpdates} /></AuthenticatedRoute>} />
             <Route path="/events" element={<EventsPage account={account} />} />
             <Route path="/orders" element={<AuthenticatedRoute account={account} authReady={authReady}><OrdersPage account={account} cartItems={courseCart} onRemoveFromCart={removeFromCourseCart} onClearCart={() => setCourseCart([])} /></AuthenticatedRoute>} />
             <Route path="/admin/student-profile" element={<Navigate to="/profile" replace />} />
             <Route path="/admin/*" element={<AdminRoute account={account} />} />
-            <Route path="/login" element={passwordRecovery ? <UpdatePasswordPage onAuthenticated={setAccount} /> : <LoginPage onAuthenticated={setAccount} />} />
+            <Route path="/login" element={passwordRecovery ? <UpdatePasswordPage onAuthenticated={setAccount} onCompleted={() => setPasswordRecovery(false)} /> : <LoginPage onAuthenticated={setAccount} />} />
             <Route path="/privacy" element={<LegalPage page="privacy" />} />
             <Route path="/imprint" element={<LegalPage page="imprint" />} />
             <Route path="/terms" element={<LegalPage page="terms" />} />
@@ -960,6 +965,7 @@ function MemberFreeTrialCard({ registration }: { registration: FreeTrialRegistra
 }
 
 type UserSettingsPageProps = {
+  account: Account;
   language: Language;
   darkMode: boolean;
   reducedMotion: boolean;
@@ -976,7 +982,7 @@ type UserSettingsPageProps = {
   onEmailUpdatesChange: (value: boolean) => void;
 };
 
-function UserSettingsPage({ language, darkMode, reducedMotion, classReminders, classReminderTiming, newActivityNotifications, emailUpdates, onLanguageChange, onDarkModeChange, onReducedMotionChange, onClassRemindersChange, onClassReminderTimingChange, onNewActivityNotificationsChange, onEmailUpdatesChange }: UserSettingsPageProps) {
+function UserSettingsPage({ account, language, darkMode, reducedMotion, classReminders, classReminderTiming, newActivityNotifications, emailUpdates, onLanguageChange, onDarkModeChange, onReducedMotionChange, onClassRemindersChange, onClassReminderTimingChange, onNewActivityNotificationsChange, onEmailUpdatesChange }: UserSettingsPageProps) {
   const { t } = useTranslation();
 
   return (
@@ -1006,8 +1012,93 @@ function UserSettingsPage({ language, darkMode, reducedMotion, classReminders, c
         </div>
         <p className="settings-future-note">{t("userSettings.notificationsFuture")}</p>
       </section>
+      <PasswordChangeCard account={account} />
     </div>
   );
+}
+
+function PasswordChangeCard({ account }: { account: Account }) {
+  const { t } = useTranslation();
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [message, setMessage] = useState("");
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setMessage("");
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setStatus("error");
+      setMessage(t("userSettings.passwordChange.required"));
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setStatus("error");
+      setMessage(t("passwordRecovery.mismatch"));
+      return;
+    }
+    if (!isStrongPassword(newPassword)) {
+      setStatus("error");
+      setMessage(t("passwordWeak"));
+      return;
+    }
+    if (currentPassword === newPassword) {
+      setStatus("error");
+      setMessage(t("userSettings.passwordChange.mustDiffer"));
+      return;
+    }
+    if (!supabase) {
+      setStatus("error");
+      setMessage(t("passwordRecovery.unavailable"));
+      return;
+    }
+
+    setStatus("loading");
+    try {
+      const { error: reauthenticationError } = await supabase.auth.signInWithPassword({ email: account.email, password: currentPassword });
+      if (reauthenticationError) {
+        setStatus("error");
+        setMessage(t("userSettings.passwordChange.currentInvalid"));
+        return;
+      }
+
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) {
+        setStatus("error");
+        setMessage(getAuthErrorMessage(error, t("userSettings.passwordChange.failed")));
+        return;
+      }
+
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setStatus("success");
+      setMessage(t("userSettings.passwordChange.success"));
+    } catch (error) {
+      setStatus("error");
+      setMessage(getAuthErrorMessage(error, t("userSettings.passwordChange.failed")));
+    }
+  }
+
+  return <section className="user-settings-card password-change-card">
+    <header><span className="settings-card-icon"><ShieldCheck size={19} /></span><div><p className="eyebrow">{t("userSettings.securityEyebrow")}</p><h2>{t("userSettings.securityTitle")}</h2><p>{t("userSettings.securityCopy")}</p></div></header>
+    <form className="password-change-form" onSubmit={handleSubmit}>
+      <label htmlFor="current-account-password">{t("userSettings.passwordChange.currentPassword")}</label>
+      <div className="password-field"><input id="current-account-password" type={showCurrentPassword ? "text" : "password"} value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} autoComplete="current-password" required /><button className="password-toggle" type="button" onClick={() => setShowCurrentPassword((visible) => !visible)} aria-label={showCurrentPassword ? t("hidePassword") : t("showPassword")} aria-pressed={showCurrentPassword}>{showCurrentPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div>
+      <label htmlFor="account-new-password">{t("passwordRecovery.newPassword")}</label>
+      <div className="password-field"><input id="account-new-password" type={showNewPassword ? "text" : "password"} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} autoComplete="new-password" minLength={minimumPasswordLength} required aria-describedby="account-password-requirements" /><button className="password-toggle" type="button" onClick={() => setShowNewPassword((visible) => !visible)} aria-label={showNewPassword ? t("hidePassword") : t("showPassword")} aria-pressed={showNewPassword}>{showNewPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div>
+      <small id="account-password-requirements" className={`password-requirement${newPassword && !isStrongPassword(newPassword) ? " invalid" : ""}`}>{t("passwordRequirements")}</small>
+      <label htmlFor="account-confirm-password">{t("passwordRecovery.confirmPassword")}</label>
+      <div className="password-field"><input id="account-confirm-password" type={showConfirmPassword ? "text" : "password"} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} autoComplete="new-password" minLength={minimumPasswordLength} required /><button className="password-toggle" type="button" onClick={() => setShowConfirmPassword((visible) => !visible)} aria-label={showConfirmPassword ? t("hidePassword") : t("showPassword")} aria-pressed={showConfirmPassword}>{showConfirmPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div>
+      <button className="primary-button small password-change-submit" type="submit" disabled={status === "loading"}>{status === "loading" ? t("working") : t("userSettings.passwordChange.submit")} <ArrowUpRight size={16} /></button>
+    </form>
+    {message && <p className={`form-message ${status}`} role={status === "error" ? "alert" : "status"}>{status === "success" && <Check size={15} />}{message}</p>}
+  </section>;
 }
 
 function SettingToggle({ icon, title, copy, checked, onChange }: { icon: ReactNode; title: string; copy: string; checked: boolean; onChange: (value: boolean) => void }) {
@@ -1648,7 +1739,7 @@ function LoginPage({ onAuthenticated }: { onAuthenticated: (account: Account) =>
   );
 }
 
-function UpdatePasswordPage({ onAuthenticated }: { onAuthenticated: (account: Account) => void }) {
+function UpdatePasswordPage({ onAuthenticated, onCompleted }: { onAuthenticated: (account: Account) => void; onCompleted: () => void }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [password, setPassword] = useState("");
@@ -1691,6 +1782,7 @@ function UpdatePasswordPage({ onAuthenticated }: { onAuthenticated: (account: Ac
         return;
       }
       onAuthenticated(accountFromUser(data.user));
+      onCompleted();
       navigate("/profile", { replace: true });
     } catch (error) {
       setStatus("error");

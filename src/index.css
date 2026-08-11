@@ -173,6 +173,10 @@ h1 em,h2 em { color:var(--gold-deep); font-style:normal; }
 .setting-switch.active { background:var(--turquoise); }
 .setting-switch.active span { transform:translateX(20px); }
 .settings-future-note { margin-top:15px; padding:11px 13px; border-radius:11px; background:rgba(242,181,68,.12); color:var(--muted); font-size:.53rem; line-height:1.5; }
+.password-change-form { display:grid; gap:9px; max-width:520px; padding-top:17px; }
+.password-change-form label { color:var(--ink); font-size:.67rem; font-weight:700; }
+.password-change-submit { justify-self:start; margin-top:5px; }
+.password-change-card .form-message { margin-bottom:0; }
 html[data-reduce-motion="true"] *,html[data-reduce-motion="true"] *::before,html[data-reduce-motion="true"] *::after { scroll-behavior:auto !important; animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; }
 .guest-access-card { display:flex; align-items:center; gap:16px; padding:22px; border-radius:20px; background:var(--ink); color:white; }
 .guest-access-card .auth-mark { flex:none; margin:0; }.guest-access-card > div:nth-child(2) { flex:1; }.guest-access-card h2 { margin:5px 0 7px; font-size:1.5rem; }.guest-access-card p { color:rgba(255,255,255,.64); font-size:.68rem; line-height:1.5; }.guest-access-card .primary-button { flex:none; }.guest-access-card.compact { color:var(--ink); background:var(--soft); }.guest-access-card.compact > svg { flex:none; color:var(--gold-deep); }.guest-access-card.compact strong { font-family:Outfit,sans-serif; font-size:1.1rem; }.guest-access-card.compact p { margin-top:5px; color:var(--muted); }

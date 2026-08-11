@@ -1773,10 +1773,26 @@ function UpdatePasswordPage({ onAuthenticated, onCompleted }: { onAuthenticated:
     const authClient = client;
 
     let mounted = true;
+    let timeout: number | undefined;
+
+    function markSessionReady() {
+      if (!mounted) return;
+      if (timeout !== undefined) window.clearTimeout(timeout);
+      setRecoverySession("ready");
+      setMessage("");
+    }
+
+    function clearRecoveryUrl() {
+      const cleanUrl = new URL(window.location.href);
+      cleanUrl.hash = "";
+      cleanUrl.searchParams.delete("code");
+      window.history.replaceState({}, document.title, cleanUrl.toString());
+    }
+
     const { data: authListener } = authClient.auth.onAuthStateChange((_event, session) => {
       if (mounted && session) {
-        setRecoverySession("ready");
-        setMessage("");
+        clearRecoveryUrl();
+        markSessionReady();
       }
     });
 
@@ -1788,9 +1804,27 @@ function UpdatePasswordPage({ onAuthenticated, onCompleted }: { onAuthenticated:
           if (error) throw error;
         }
 
+        const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+        const accessToken = hash.get("access_token");
+        const refreshToken = hash.get("refresh_token");
+        if (accessToken && refreshToken) {
+          const { error } = await authClient.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+          if (error) throw error;
+        }
+
         const { data, error } = await authClient.auth.getSession();
-        if (error || !data.session) throw error ?? new Error("Recovery session missing");
-        if (mounted) setRecoverySession("ready");
+        if (error) throw error;
+        if (data.session) {
+          clearRecoveryUrl();
+          markSessionReady();
+          return;
+        }
+
+        timeout = window.setTimeout(() => {
+          if (!mounted) return;
+          setRecoverySession("error");
+          setMessage(t("passwordRecovery.invalidLink"));
+        }, 5000);
       } catch (error) {
         if (!mounted) return;
         setRecoverySession("error");
@@ -1801,6 +1835,7 @@ function UpdatePasswordPage({ onAuthenticated, onCompleted }: { onAuthenticated:
     void prepareRecoverySession();
     return () => {
       mounted = false;
+      if (timeout !== undefined) window.clearTimeout(timeout);
       authListener.subscription.unsubscribe();
     };
   }, [t]);

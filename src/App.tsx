@@ -317,7 +317,7 @@ function App() {
             <Route path="/courses" element={<CoursesPage account={account} cartItems={courseCart} onRemoveFromCart={removeFromCourseCart} />} />
             <Route path="/courses/:courseSlug" element={<CourseDetailPage account={account} freeTrialRegistration={freeTrialRegistration} onRegisterFreeTrial={addFreeTrialClass} onAddToCart={addToCourseCart} cartItems={courseCart} />} />
             <Route path="/schedule" element={<SchedulePage />} />
-            <Route path="/profile" element={<ProfilePage account={account} freeTrialRegistration={freeTrialRegistration} onSignOut={handleSignOut} />} />
+            <Route path="/profile" element={<AuthenticatedRoute account={account} authReady={authReady}><ProfilePage account={account} freeTrialRegistration={freeTrialRegistration} onSignOut={handleSignOut} /></AuthenticatedRoute>} />
             <Route path="/settings" element={<AuthenticatedRoute account={account} authReady={authReady}><UserSettingsPage language={language} darkMode={darkMode} reducedMotion={reducedMotion} classReminders={classReminders} classReminderTiming={classReminderTiming} newActivityNotifications={newActivityNotifications} emailUpdates={emailUpdates} onLanguageChange={setLanguage} onDarkModeChange={setDarkMode} onReducedMotionChange={setReducedMotion} onClassRemindersChange={setClassReminders} onClassReminderTimingChange={setClassReminderTiming} onNewActivityNotificationsChange={setNewActivityNotifications} onEmailUpdatesChange={setEmailUpdates} /></AuthenticatedRoute>} />
             <Route path="/events" element={<EventsPage account={account} />} />
             <Route path="/orders" element={<AuthenticatedRoute account={account} authReady={authReady}><OrdersPage account={account} cartItems={courseCart} onRemoveFromCart={removeFromCourseCart} onClearCart={() => setCourseCart([])} /></AuthenticatedRoute>} />
@@ -876,20 +876,8 @@ function ProfilePage({ account, freeTrialRegistration, onSignOut }: { account: A
     return () => { mounted = false; };
   }, [account?.id, account?.source]);
 
-  return (
-    <div className="page-stack inner-page">
-      <PageIntro eyebrow={t("nav.profile")} title={t("profileTitle")} copy={t("profileCopy")} />
-      {!account ? (
-        <div className="guest-access-card">
-          <div className="auth-mark"><UserPlus size={21} /></div>
-          <div><p className="eyebrow">{t("guestAccount")}</p><h2>{t("personalAreaTitle")}</h2><p>{t("personalAreaCopy")}</p></div>
-          <Link to="/login" className="primary-button small">{t("createAccount")} <ArrowUpRight size={16} /></Link>
-        </div>
-      ) : (
-        <MemberDashboard account={account} displayName={displayName} commercialCategory={commercialCategory} freeTrialRegistration={freeTrialRegistration} onSignOut={onSignOut} />
-      )}
-    </div>
-  );
+  if (!account) return null;
+  return <div className="page-stack inner-page"><PageIntro eyebrow={t("nav.profile")} title={t("profileTitle")} copy={t("profileCopy")} /><MemberDashboard account={account} displayName={displayName} commercialCategory={commercialCategory} freeTrialRegistration={freeTrialRegistration} onSignOut={onSignOut} /></div>;
 }
 
 function MemberDashboard({ account, displayName, commercialCategory, freeTrialRegistration, onSignOut }: { account: Account; displayName: string; commercialCategory: ProfileCommercialCategory; freeTrialRegistration: FreeTrialRegistration | null; onSignOut: () => Promise<void> }) {

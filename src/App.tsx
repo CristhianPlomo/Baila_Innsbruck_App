@@ -128,7 +128,9 @@ function isPasswordRecoveryLink() {
   // arrive with a one-time `code` query parameter. Custom email templates can
   // also send a one-time `token_hash` query parameter. Support all formats so
   // the recovery screen is rendered before the auth event finishes resolving.
-  return hash.get("type") === "recovery" || query.get("type") === "recovery" || query.has("code") || query.has("token_hash");
+  const hasImplicitRecoverySession = hash.get("type") === "recovery" && Boolean(hash.get("access_token") && hash.get("refresh_token"));
+  const hasOneTimeRecoveryToken = query.has("code") || query.has("token_hash");
+  return hasImplicitRecoverySession || hasOneTimeRecoveryToken;
 }
 
 function getAuthErrorMessage(error: unknown, fallback: string) {

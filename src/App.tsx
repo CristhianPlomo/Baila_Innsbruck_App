@@ -1757,12 +1757,60 @@ function UpdatePasswordPage({ onAuthenticated, onCompleted }: { onAuthenticated:
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [recoverySession, setRecoverySession] = useState<"loading" | "ready" | "error">("loading");
   const [message, setMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  useEffect(() => {
+    const client = supabase;
+    if (!client) {
+      setRecoverySession("error");
+      setMessage(t("passwordRecovery.unavailable"));
+      return;
+    }
+    const authClient = client;
+
+    let mounted = true;
+    const { data: authListener } = authClient.auth.onAuthStateChange((_event, session) => {
+      if (mounted && session) {
+        setRecoverySession("ready");
+        setMessage("");
+      }
+    });
+
+    async function prepareRecoverySession() {
+      try {
+        const code = new URLSearchParams(window.location.search).get("code");
+        if (code) {
+          const { error } = await authClient.auth.exchangeCodeForSession(code);
+          if (error) throw error;
+        }
+
+        const { data, error } = await authClient.auth.getSession();
+        if (error || !data.session) throw error ?? new Error("Recovery session missing");
+        if (mounted) setRecoverySession("ready");
+      } catch (error) {
+        if (!mounted) return;
+        setRecoverySession("error");
+        setMessage(getAuthErrorMessage(error, t("passwordRecovery.invalidLink")));
+      }
+    }
+
+    void prepareRecoverySession();
+    return () => {
+      mounted = false;
+      authListener.subscription.unsubscribe();
+    };
+  }, [t]);
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (recoverySession !== "ready") {
+      setStatus("error");
+      setMessage(t("passwordRecovery.invalidLink"));
+      return;
+    }
     if (password !== confirmPassword) {
       setStatus("error");
       setMessage(t("passwordRecovery.mismatch"));
@@ -1787,6 +1835,14 @@ function UpdatePasswordPage({ onAuthenticated, onCompleted }: { onAuthenticated:
     setStatus("loading");
     setMessage("");
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        setStatus("error");
+        setRecoverySession("error");
+        setMessage(t("passwordRecovery.invalidLink"));
+        return;
+      }
+
       const { data, error } = await supabase.auth.updateUser({ password });
       if (error || !data.user) {
         setStatus("error");
@@ -1812,7 +1868,7 @@ function UpdatePasswordPage({ onAuthenticated, onCompleted }: { onAuthenticated:
       <div className="password-field"><input id="new-password" type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" minLength={minimumPasswordLength} required aria-describedby="new-password-requirements" /><button className="password-toggle" type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? t("hidePassword") : t("showPassword")} aria-pressed={showPassword}>{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div><small id="new-password-requirements" className={`password-requirement${password && !isStrongPassword(password) ? " invalid" : ""}`}>{t("passwordRequirements")}</small>
       <label htmlFor="confirm-new-password">{t("passwordRecovery.confirmPassword")}</label>
       <div className="password-field"><input id="confirm-new-password" type={showConfirmPassword ? "text" : "password"} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} autoComplete="new-password" minLength={minimumPasswordLength} required /><button className="password-toggle" type="button" onClick={() => setShowConfirmPassword((visible) => !visible)} aria-label={showConfirmPassword ? t("hidePassword") : t("showPassword")} aria-pressed={showConfirmPassword}>{showConfirmPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div>
-      <button className="primary-button full" type="submit" disabled={status === "loading"}>{status === "loading" ? t("working") : t("passwordRecovery.updateButton")} <ArrowUpRight size={18} /></button>
+      <button className="primary-button full" type="submit" disabled={status === "loading" || recoverySession !== "ready"}>{status === "loading" ? t("working") : recoverySession === "loading" ? t("working") : t("passwordRecovery.updateButton")} <ArrowUpRight size={18} /></button>
     </form>
     {message && <p className="form-message error" role="alert">{message}</p>}
     <p className="auth-footnote">{t("passwordRecovery.securityNote")}</p>

@@ -746,6 +746,9 @@ Object.assign(resources.es.translation, { passwordRecovery: {
 Object.assign(resources.en.translation, { passwordRequirements: "Use at least 8 characters with letters and numbers. A dot or hyphen can make it stronger.", passwordWeak: "Choose a stronger password with at least 8 characters, including a letter and a number." });
 Object.assign(resources.de.translation, { passwordRequirements: "Verwende mindestens 8 Zeichen mit Buchstaben und Zahlen. Ein Punkt oder Bindestrich macht es noch stärker.", passwordWeak: "Wähle ein stärkeres Passwort mit mindestens 8 Zeichen, darunter ein Buchstabe und eine Zahl." });
 Object.assign(resources.es.translation, { passwordRequirements: "Usa al menos 8 caracteres con letras y números. Un punto o un guion puede hacerla más segura.", passwordWeak: "Elige una contraseña más segura: mínimo 8 caracteres, con al menos una letra y un número." });
+Object.assign(resources.en.translation, { scheduleClassesCount: "{{count}} classes" });
+Object.assign(resources.de.translation, { scheduleClassesCount: "{{count}} Kurse" });
+Object.assign(resources.es.translation, { scheduleClassesCount: "{{count}} clases" });
 
 void i18n.use(initReactI18next).init({ resources, lng: "en", fallbackLng: "en", interpolation: { escapeValue: false } });
 

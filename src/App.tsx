@@ -834,7 +834,14 @@ function CourseDetailPage({ account, freeTrialRegistration, onRegisterFreeTrial,
 
 function SchedulePage() {
   const { t } = useTranslation();
-  return <div className="page-stack inner-page"><PageIntro eyebrow={t("nav.schedule")} title={t("scheduleTitle")} copy={t("scheduleCopy")} /><div className="schedule-list schedule-page-list">{schedule.map((item) => <ScheduleRow key={`${item.day}-${item.time}-${item.title}`} item={item} />)}</div></div>;
+  const dayGroups = schedule.reduce<Array<{ day: string; items: ScheduleItem[] }>>((groups, item) => {
+    const group = groups.find((entry) => entry.day === item.day);
+    if (group) group.items.push(item);
+    else groups.push({ day: item.day, items: [item] });
+    return groups;
+  }, []);
+
+  return <div className="page-stack inner-page"><PageIntro eyebrow={t("nav.schedule")} title={t("scheduleTitle")} copy={t("scheduleCopy")} /><div className="schedule-accordion-list schedule-page-list">{dayGroups.map((group, index) => <details className="schedule-day" key={group.day} open={index === 0}><summary className="schedule-day-summary"><span className="schedule-day-heading"><strong>{t(`days.${group.day}`)}</strong><small>{t("scheduleClassesCount", { count: group.items.length })}</small></span><span className="schedule-day-toggle" aria-hidden="true"><ChevronDown size={18} /></span></summary><div className="schedule-day-classes">{group.items.map((item) => <ScheduleRow key={`${item.day}-${item.time}-${item.title}`} item={item} />)}</div></details>)}</div></div>;
 }
 
 function AdminRoute({ account }: { account: Account | null }) {

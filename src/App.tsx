@@ -352,7 +352,7 @@ function App() {
           <LegalFooter />
         </main>
       </div>
-      <MobileNav account={account} />
+      <MobileNav account={account} onSignOut={handleSignOut} />
       {cartConfirmation && <CartAddedDialog item={cartConfirmation} onClose={() => setCartConfirmation(null)} />}
       {freeTrialConfirmation && <FreeTrialDialog registration={freeTrialConfirmation} onClose={() => setFreeTrialConfirmation(null)} />}
       <ConfirmDialog open={Boolean(cartRemovalConfirmation)} eyebrow={t("confirmations.eyebrow")} title={t("confirmations.deleteTitle", { item: cartRemovalConfirmation ? `${cartRemovalConfirmation.courseName}${cartRemovalConfirmation.styleName ? ` · ${cartRemovalConfirmation.styleName}` : ""}` : t("catalog.cart") })} copy={t("confirmations.deleteCopy")} confirmLabel={t("confirmations.delete")} cancelLabel={t("confirmations.cancel")} destructive onConfirm={confirmRemoveFromCourseCart} onCancel={() => setCartRemovalConfirmation(null)} />
@@ -555,7 +555,7 @@ function Sidebar({ account, menuOpen, onNavigate }: { account: Account | null; m
   );
 }
 
-function MobileNav({ account }: { account: Account | null }) {
+function MobileNav({ account, onSignOut }: { account: Account | null; onSignOut: () => Promise<void> }) {
   const { t } = useTranslation();
   const items = [
     { to: "/", label: t("nav.home"), icon: Home, end: true },
@@ -563,8 +563,9 @@ function MobileNav({ account }: { account: Account | null }) {
     { to: "/events", label: t("nav.events"), icon: Sparkles },
     ...(account ? [{ to: "/orders", label: t("nav.orders"), icon: ShoppingBag }] : []),
     { to: "/profile", label: t("nav.profile"), icon: CircleUserRound },
+    ...(account ? [{ to: "/settings", label: t("userSettings.menuLabel"), icon: Settings2 }] : []),
   ];
-  return <nav className="mobile-nav" aria-label={t("navigation")}>{items.map(({ to, label, icon: Icon, end }) => <NavLink key={to} to={to} end={end} className={({ isActive }) => isActive ? "active" : ""}><Icon size={19} /><span>{label}</span></NavLink>)}</nav>;
+  return <nav className={account ? "mobile-nav authenticated" : "mobile-nav"} aria-label={t("navigation")}>{items.map(({ to, label, icon: Icon, end }) => <NavLink key={to} to={to} end={end} className={({ isActive }) => isActive ? "active" : ""}><Icon size={19} /><span>{label}</span></NavLink>)}{account && <button type="button" onClick={() => void onSignOut()}><LogOut size={19} /><span>{t("signOut")}</span></button>}</nav>;
 }
 
 function AuthenticatedRoute({ account, authReady, children }: { account: Account | null; authReady: boolean; children: ReactNode }) {

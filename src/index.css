@@ -567,7 +567,10 @@ html[data-theme="dark"] .course-card.course-card-with-image { color:#fff; }
   .sidebar-card { margin-top:24px; }
   .sidebar-foot { margin-top:24px; padding-top:0; }
   .mobile-nav { position:fixed; z-index:35; right:0; bottom:0; left:0; display:grid; grid-template-columns:repeat(auto-fit,minmax(58px,1fr)); padding:8px 10px calc(8px + env(safe-area-inset-bottom)); border:0; border-top:1px solid rgba(255,255,255,.22); border-radius:0; background:rgba(13,13,13,.96); box-shadow:0 -10px 28px rgba(13,13,13,.18); color:rgba(255,255,255,.68); backdrop-filter:blur(15px); }
-  .mobile-nav a { min-width:0; display:grid; justify-items:center; gap:4px; padding:8px 3px; border-radius:12px; font-size:.52rem; font-weight:600; }
+  .mobile-nav a,.mobile-nav button { min-width:0; display:grid; justify-items:center; gap:4px; padding:8px 3px; border-radius:12px; font:inherit; font-size:.52rem; font-weight:600; color:inherit; text-decoration:none; }
+  .mobile-nav button { border:0; background:transparent; cursor:pointer; }
+  .mobile-nav.authenticated { grid-template-columns:repeat(7,minmax(0,1fr)); }
+  .mobile-nav.authenticated a,.mobile-nav.authenticated button { padding-inline:1px; font-size:.48rem; }
   .mobile-nav a.active { color:#0d0d0d; background:var(--gold); }
   .welcome-grid { grid-template-columns:1fr; gap:34px; }
   .welcome-copy { padding-top:8px; }

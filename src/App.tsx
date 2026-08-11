@@ -877,11 +877,35 @@ function ProfilePage({ account, freeTrialRegistration, onSignOut }: { account: A
   }, [account?.id, account?.source]);
 
   if (!account) return null;
-  return <div className="page-stack inner-page"><PageIntro eyebrow={t("nav.profile")} title={t("profileTitle")} copy={t("profileCopy")} /><MemberDashboard account={account} displayName={displayName} commercialCategory={commercialCategory} freeTrialRegistration={freeTrialRegistration} onSignOut={onSignOut} /></div>;
+  return <div className="page-stack inner-page"><PageIntro eyebrow={t("nav.profile")} title={t("profileTitle")} copy={t("profileCopy")} /><MemberDashboard account={account} displayName={displayName} commercialCategory={commercialCategory} purchases={purchases} freeTrialRegistration={freeTrialRegistration} onSignOut={onSignOut} /></div>;
 }
 
-function MemberDashboard({ account, displayName, commercialCategory, freeTrialRegistration, onSignOut }: { account: Account; displayName: string; commercialCategory: ProfileCommercialCategory; freeTrialRegistration: FreeTrialRegistration | null; onSignOut: () => Promise<void> }) {
+function getDashboardMetrics(purchases: UserPurchase[], freeTrialRegistration: FreeTrialRegistration | null) {
+  const now = Date.now();
+  const activePurchases = purchases.filter((purchase) => {
+    if (purchase.kind === "membership" || purchase.status !== "paid") return false;
+    if (purchase.validUntil && new Date(purchase.validUntil).getTime() < now) return false;
+    if (purchase.kind === "package" && purchase.sessions?.length && !purchase.sessions.some((session) => session.status === "available")) return false;
+    return true;
+  });
+  const purchasedClasses = activePurchases.reduce((total, purchase) => {
+    if (!purchase.courseName) return total + 1;
+    return total + Math.max(1, purchase.courseName.split(",").map((course) => course.trim()).filter(Boolean).length);
+  }, 0);
+  const trialClasses = freeTrialRegistration?.status === "active" ? freeTrialRegistration.classes.length : 0;
+  const sessionsLeft = activePurchases.reduce((total, purchase) => total + (purchase.sessions?.filter((session) => session.status === "available").length ?? 0), 0);
+
+  return {
+    upcomingClasses: purchasedClasses + trialClasses,
+    savedEvents: 0,
+    sessionsLeft,
+  };
+}
+
+function MemberDashboard({ account, displayName, commercialCategory, purchases, freeTrialRegistration, onSignOut }: { account: Account; displayName: string; commercialCategory: ProfileCommercialCategory; purchases: UserPurchase[]; freeTrialRegistration: FreeTrialRegistration | null; onSignOut: () => Promise<void> }) {
   const { t } = useTranslation();
+  const metrics = getDashboardMetrics(purchases, freeTrialRegistration);
+  const formatMetric = (value: number) => String(value).padStart(2, "0");
   return (
     <div className="member-dashboard">
       <section className="dashboard-welcome">
@@ -889,9 +913,9 @@ function MemberDashboard({ account, displayName, commercialCategory, freeTrialRe
         <div className="dashboard-role"><span className="dashboard-role-icon"><Users size={20} /></span><small>{t("danceRole")}</small><strong>{t(`roles.${account.profile.danceRole}`)}</strong></div>
       </section>
       <div className="dashboard-stats">
-        <div><strong>03</strong><span>{t("upcomingClasses")}</span></div>
-        <div><strong>02</strong><span>{t("savedEvents")}</span></div>
-        <div><strong>08</strong><span>{t("sessionsLeft")}</span></div>
+        <Link to="/schedule" className="dashboard-stat-card"><strong>{formatMetric(metrics.upcomingClasses)}</strong><span>{t("upcomingClasses")}</span></Link>
+        <Link to="/events" className="dashboard-stat-card"><strong>{formatMetric(metrics.savedEvents)}</strong><span>{t("savedEvents")}</span></Link>
+        <Link to="/orders" className="dashboard-stat-card"><strong>{formatMetric(metrics.sessionsLeft)}</strong><span>{t("sessionsLeft")}</span></Link>
       </div>
       <div className="dashboard-grid">
         <section className="dashboard-panel dashboard-panel-wide"><div className="dashboard-panel-heading"><div><p className="eyebrow">{t("nextClassEyebrow")}</p><h3>{t("nextClassTitle")}</h3></div><CalendarDays size={20} /></div><div className="dashboard-highlight"><strong>18:00</strong><span>{t("nextClassMeta")}</span><span className="status-pill"><Check size={13} />{t("booked")}</span></div><Link to="/schedule" className="quiet-link">{t("openSchedule")} <ArrowUpRight size={15} /></Link></section>

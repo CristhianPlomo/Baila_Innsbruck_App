@@ -37,6 +37,8 @@ button,a { -webkit-tap-highlight-color:transparent; }
 .side-link { display:flex; align-items:center; gap:12px; padding:12px 13px; margin:3px 0; border-radius:12px; color:#615e59; font-size:.8rem; font-weight:600; transition:.2s ease; }
 .side-link:hover { color:var(--ink); background:rgba(242,181,68,.12); }
 .side-link.active { color:var(--ink); background:var(--gold); box-shadow:0 8px 18px rgba(191,144,57,.15); }
+.sidebar-account-actions { display:grid; gap:0; margin-top:4px; }
+.sidebar-action-button { width:100%; border:0; background:transparent; font:inherit; text-align:left; cursor:pointer; }
 .sidebar-card { margin-top:26px; padding:18px; border-radius:18px; background:var(--ink); color:white; }
 .mini-orb { width:32px; height:32px; display:grid; place-items:center; border-radius:50%; color:var(--ink); background:var(--gold); margin-bottom:17px; }
 .sidebar-card strong { display:block; font-family:Outfit,sans-serif; font-size:1.12rem; line-height:1; }
@@ -569,8 +571,6 @@ html[data-theme="dark"] .course-card.course-card-with-image { color:#fff; }
   .mobile-nav { position:fixed; z-index:35; right:0; bottom:0; left:0; display:grid; grid-template-columns:repeat(auto-fit,minmax(58px,1fr)); padding:8px 10px calc(8px + env(safe-area-inset-bottom)); border:0; border-top:1px solid rgba(255,255,255,.22); border-radius:0; background:rgba(13,13,13,.96); box-shadow:0 -10px 28px rgba(13,13,13,.18); color:rgba(255,255,255,.68); backdrop-filter:blur(15px); }
   .mobile-nav a,.mobile-nav button { min-width:0; display:grid; justify-items:center; gap:4px; padding:8px 3px; border-radius:12px; font:inherit; font-size:.52rem; font-weight:600; color:inherit; text-decoration:none; }
   .mobile-nav button { border:0; background:transparent; cursor:pointer; }
-  .mobile-nav.authenticated { grid-template-columns:repeat(7,minmax(0,1fr)); }
-  .mobile-nav.authenticated a,.mobile-nav.authenticated button { padding-inline:1px; font-size:.48rem; }
   .mobile-nav a.active { color:#0d0d0d; background:var(--gold); }
   .welcome-grid { grid-template-columns:1fr; gap:34px; }
   .welcome-copy { padding-top:8px; }

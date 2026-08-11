@@ -328,7 +328,7 @@ function App() {
       <ScrollToTop />
       <AppHeader account={account} darkMode={darkMode} onDarkModeChange={setDarkMode} onSignOut={handleSignOut} menuOpen={menuOpen} onMenuToggle={() => setMenuOpen((open) => !open)} cartItems={courseCart} onRemoveFromCart={removeFromCourseCart} />
       <div className="app-layout">
-        <Sidebar account={account} menuOpen={menuOpen} onNavigate={() => setMenuOpen(false)} />
+        <Sidebar account={account} menuOpen={menuOpen} onNavigate={() => setMenuOpen(false)} onSignOut={handleSignOut} />
         {menuOpen && <button className="sidebar-backdrop" type="button" onClick={() => setMenuOpen(false)} aria-label={t("closeMenu")} />}
         <main className="app-main">
           <Routes>
@@ -352,7 +352,7 @@ function App() {
           <LegalFooter />
         </main>
       </div>
-      <MobileNav account={account} onSignOut={handleSignOut} />
+      <MobileNav account={account} />
       {cartConfirmation && <CartAddedDialog item={cartConfirmation} onClose={() => setCartConfirmation(null)} />}
       {freeTrialConfirmation && <FreeTrialDialog registration={freeTrialConfirmation} onClose={() => setFreeTrialConfirmation(null)} />}
       <ConfirmDialog open={Boolean(cartRemovalConfirmation)} eyebrow={t("confirmations.eyebrow")} title={t("confirmations.deleteTitle", { item: cartRemovalConfirmation ? `${cartRemovalConfirmation.courseName}${cartRemovalConfirmation.styleName ? ` · ${cartRemovalConfirmation.styleName}` : ""}` : t("catalog.cart") })} copy={t("confirmations.deleteCopy")} confirmLabel={t("confirmations.delete")} cancelLabel={t("confirmations.cancel")} destructive onConfirm={confirmRemoveFromCourseCart} onCancel={() => setCartRemovalConfirmation(null)} />
@@ -501,7 +501,7 @@ function CourseCartMenu({ cartItems, onRemoveFromCart }: { cartItems: CourseCart
   return <div className="catalog-cart topbar-cart"><button type="button" className="secondary-button compact catalog-cart-trigger" onClick={() => setCartOpen((open) => !open)} aria-expanded={cartOpen} aria-haspopup="dialog"><ShoppingBag size={15} />{t("catalog.cart")} <b className="cart-count">{cartItems.length}</b><ChevronDown size={14} className={cartOpen ? "cart-chevron open" : "cart-chevron"} /></button>{cartOpen && <div className="catalog-cart-popover" role="dialog" aria-label={t("catalog.cartTitle")}><div className="catalog-cart-popover-heading"><div><p className="eyebrow">{t("catalog.cartEyebrow")}</p><strong>{t("catalog.cartTitle")}</strong></div><span>{t("catalog.cartCopy", { count: cartItems.length })}</span></div>{cartItems.length > 0 ? <div className="catalog-cart-items">{cartItems.map((item) => <div className="catalog-cart-item" key={item.id}><div><strong>{item.courseName}{item.styleName ? ` · ${item.styleName}` : ""}</strong><small>{item.levelName}</small></div><div className="catalog-cart-item-actions"><span>{item.amount ? `${item.currency ?? "EUR"} ${item.amount}` : t("catalog.pricePending")}</span><button className="catalog-cart-remove" type="button" onClick={() => onRemoveFromCart(item.id)} aria-label={t("catalog.removeFromCart")} title={t("catalog.removeFromCart")}><Trash2 size={15} aria-hidden="true" /></button></div></div>)}</div> : <p className="catalog-cart-empty">{t("catalog.cartEmpty")}</p>}<Link to="/orders#checkout" className="primary-button small" onClick={() => setCartOpen(false)}>{t("catalog.openCart")} <ArrowUpRight size={15} /></Link></div>}</div>;
 }
 
-function Sidebar({ account, menuOpen, onNavigate }: { account: Account | null; menuOpen: boolean; onNavigate: () => void }) {
+function Sidebar({ account, menuOpen, onNavigate, onSignOut }: { account: Account | null; menuOpen: boolean; onNavigate: () => void; onSignOut: () => Promise<void> }) {
   const { t } = useTranslation();
   const location = useLocation();
   const adminAccess = Boolean(account && isAdminAccount(account));
@@ -535,6 +535,10 @@ function Sidebar({ account, menuOpen, onNavigate }: { account: Account | null; m
             <Icon size={18} strokeWidth={1.8} /> <span>{label}</span>
           </NavLink>
         ))}
+        {account && <div className="sidebar-account-actions">
+          <NavLink to="/settings" className={({ isActive }) => `side-link${isActive && !isAdminRoute ? " active" : ""}`} onClick={onNavigate}><Settings2 size={18} strokeWidth={1.8} /> <span>{t("userSettings.menuLabel")}</span></NavLink>
+          <button className="side-link sidebar-action-button" type="button" onClick={() => { onNavigate(); void onSignOut(); }}><LogOut size={18} strokeWidth={1.8} /> <span>{t("signOut")}</span></button>
+        </div>}
         {adminAccess && <>
           <div className="sidebar-section-divider"><span>{t("admin.sidebarTitle")}</span></div>
           <div className="sidebar-admin-subnav">
@@ -555,7 +559,7 @@ function Sidebar({ account, menuOpen, onNavigate }: { account: Account | null; m
   );
 }
 
-function MobileNav({ account, onSignOut }: { account: Account | null; onSignOut: () => Promise<void> }) {
+function MobileNav({ account }: { account: Account | null }) {
   const { t } = useTranslation();
   const items = [
     { to: "/", label: t("nav.home"), icon: Home, end: true },
@@ -563,9 +567,8 @@ function MobileNav({ account, onSignOut }: { account: Account | null; onSignOut:
     { to: "/events", label: t("nav.events"), icon: Sparkles },
     ...(account ? [{ to: "/orders", label: t("nav.orders"), icon: ShoppingBag }] : []),
     { to: "/profile", label: t("nav.profile"), icon: CircleUserRound },
-    ...(account ? [{ to: "/settings", label: t("userSettings.menuLabel"), icon: Settings2 }] : []),
   ];
-  return <nav className={account ? "mobile-nav authenticated" : "mobile-nav"} aria-label={t("navigation")}>{items.map(({ to, label, icon: Icon, end }) => <NavLink key={to} to={to} end={end} className={({ isActive }) => isActive ? "active" : ""}><Icon size={19} /><span>{label}</span></NavLink>)}{account && <button type="button" onClick={() => void onSignOut()}><LogOut size={19} /><span>{t("signOut")}</span></button>}</nav>;
+  return <nav className="mobile-nav" aria-label={t("navigation")}>{items.map(({ to, label, icon: Icon, end }) => <NavLink key={to} to={to} end={end} className={({ isActive }) => isActive ? "active" : ""}><Icon size={19} /><span>{label}</span></NavLink>)}</nav>;
 }
 
 function AuthenticatedRoute({ account, authReady, children }: { account: Account | null; authReady: boolean; children: ReactNode }) {

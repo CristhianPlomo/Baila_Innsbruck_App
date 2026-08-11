@@ -337,7 +337,7 @@ function App() {
             <Route path="/courses/:courseSlug" element={<CourseDetailPage account={account} freeTrialRegistration={freeTrialRegistration} onRegisterFreeTrial={addFreeTrialClass} onAddToCart={addToCourseCart} cartItems={courseCart} />} />
             <Route path="/schedule" element={<SchedulePage />} />
             <Route path="/profile" element={<AuthenticatedRoute account={account} authReady={authReady}><ProfilePage account={account} freeTrialRegistration={freeTrialRegistration} onSignOut={handleSignOut} /></AuthenticatedRoute>} />
-            <Route path="/settings" element={<AuthenticatedRoute account={account} authReady={authReady}><UserSettingsPage account={account!} language={language} darkMode={darkMode} reducedMotion={reducedMotion} classReminders={classReminders} classReminderTiming={classReminderTiming} newActivityNotifications={newActivityNotifications} emailUpdates={emailUpdates} onLanguageChange={setLanguage} onDarkModeChange={setDarkMode} onReducedMotionChange={setReducedMotion} onClassRemindersChange={setClassReminders} onClassReminderTimingChange={setClassReminderTiming} onNewActivityNotificationsChange={setNewActivityNotifications} onEmailUpdatesChange={setEmailUpdates} /></AuthenticatedRoute>} />
+            <Route path="/settings" element={<AuthenticatedRoute account={account} authReady={authReady}><UserSettingsPage language={language} darkMode={darkMode} reducedMotion={reducedMotion} classReminders={classReminders} classReminderTiming={classReminderTiming} newActivityNotifications={newActivityNotifications} emailUpdates={emailUpdates} onLanguageChange={setLanguage} onDarkModeChange={setDarkMode} onReducedMotionChange={setReducedMotion} onClassRemindersChange={setClassReminders} onClassReminderTimingChange={setClassReminderTiming} onNewActivityNotificationsChange={setNewActivityNotifications} onEmailUpdatesChange={setEmailUpdates} /></AuthenticatedRoute>} />
             <Route path="/events" element={<EventsPage account={account} />} />
             <Route path="/orders" element={<AuthenticatedRoute account={account} authReady={authReady}><OrdersPage account={account} cartItems={courseCart} onRemoveFromCart={removeFromCourseCart} onClearCart={() => setCourseCart([])} /></AuthenticatedRoute>} />
             <Route path="/admin/student-profile" element={<Navigate to="/profile" replace />} />
@@ -1000,7 +1000,6 @@ function MemberFreeTrialCard({ registration }: { registration: FreeTrialRegistra
 }
 
 type UserSettingsPageProps = {
-  account: Account;
   language: Language;
   darkMode: boolean;
   reducedMotion: boolean;
@@ -1017,7 +1016,7 @@ type UserSettingsPageProps = {
   onEmailUpdatesChange: (value: boolean) => void;
 };
 
-function UserSettingsPage({ account, language, darkMode, reducedMotion, classReminders, classReminderTiming, newActivityNotifications, emailUpdates, onLanguageChange, onDarkModeChange, onReducedMotionChange, onClassRemindersChange, onClassReminderTimingChange, onNewActivityNotificationsChange, onEmailUpdatesChange }: UserSettingsPageProps) {
+function UserSettingsPage({ language, darkMode, reducedMotion, classReminders, classReminderTiming, newActivityNotifications, emailUpdates, onLanguageChange, onDarkModeChange, onReducedMotionChange, onClassRemindersChange, onClassReminderTimingChange, onNewActivityNotificationsChange, onEmailUpdatesChange }: UserSettingsPageProps) {
   const { t } = useTranslation();
 
   return (
@@ -1047,19 +1046,17 @@ function UserSettingsPage({ account, language, darkMode, reducedMotion, classRem
         </div>
         <p className="settings-future-note">{t("userSettings.notificationsFuture")}</p>
       </section>
-      <PasswordChangeCard account={account} />
+      <PasswordChangeCard />
     </div>
   );
 }
 
-function PasswordChangeCard({ account }: { account: Account }) {
+function PasswordChangeCard() {
   const { t } = useTranslation();
-  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -1067,11 +1064,6 @@ function PasswordChangeCard({ account }: { account: Account }) {
     event.preventDefault();
     setMessage("");
 
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      setStatus("error");
-      setMessage(t("userSettings.passwordChange.required"));
-      return;
-    }
     if (newPassword !== confirmPassword) {
       setStatus("error");
       setMessage(t("passwordRecovery.mismatch"));
@@ -1082,11 +1074,6 @@ function PasswordChangeCard({ account }: { account: Account }) {
       setMessage(t("passwordWeak"));
       return;
     }
-    if (currentPassword === newPassword) {
-      setStatus("error");
-      setMessage(t("userSettings.passwordChange.mustDiffer"));
-      return;
-    }
     if (!supabase) {
       setStatus("error");
       setMessage(t("passwordRecovery.unavailable"));
@@ -1095,13 +1082,6 @@ function PasswordChangeCard({ account }: { account: Account }) {
 
     setStatus("loading");
     try {
-      const { error: reauthenticationError } = await supabase.auth.signInWithPassword({ email: account.email, password: currentPassword });
-      if (reauthenticationError) {
-        setStatus("error");
-        setMessage(t("userSettings.passwordChange.currentInvalid"));
-        return;
-      }
-
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) {
         setStatus("error");
@@ -1109,7 +1089,6 @@ function PasswordChangeCard({ account }: { account: Account }) {
         return;
       }
 
-      setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
       setStatus("success");
@@ -1123,8 +1102,6 @@ function PasswordChangeCard({ account }: { account: Account }) {
   return <section className="user-settings-card password-change-card">
     <header><span className="settings-card-icon"><ShieldCheck size={19} /></span><div><p className="eyebrow">{t("userSettings.securityEyebrow")}</p><h2>{t("userSettings.securityTitle")}</h2><p>{t("userSettings.securityCopy")}</p></div></header>
     <form className="password-change-form" onSubmit={handleSubmit}>
-      <label htmlFor="current-account-password">{t("userSettings.passwordChange.currentPassword")}</label>
-      <div className="password-field"><input id="current-account-password" type={showCurrentPassword ? "text" : "password"} value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} autoComplete="current-password" required /><button className="password-toggle" type="button" onClick={() => setShowCurrentPassword((visible) => !visible)} aria-label={showCurrentPassword ? t("hidePassword") : t("showPassword")} aria-pressed={showCurrentPassword}>{showCurrentPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div>
       <label htmlFor="account-new-password">{t("passwordRecovery.newPassword")}</label>
       <div className="password-field"><input id="account-new-password" type={showNewPassword ? "text" : "password"} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} autoComplete="new-password" minLength={minimumPasswordLength} required aria-describedby="account-password-requirements" /><button className="password-toggle" type="button" onClick={() => setShowNewPassword((visible) => !visible)} aria-label={showNewPassword ? t("hidePassword") : t("showPassword")} aria-pressed={showNewPassword}>{showNewPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div>
       <small id="account-password-requirements" className={`password-requirement${newPassword && !isStrongPassword(newPassword) ? " invalid" : ""}`}>{t("passwordRequirements")}</small>

@@ -49,7 +49,7 @@ import { deleteAdminClass, deleteAdminCourse, deleteAdminEvent, deleteAdminGroup
 import { getAdminStudioSettings, resetAdminStudioSettings, saveAdminStudioSettings, type AdminStudioSettings } from "../lib/admin-settings";
 import { getSimulatedClassPaymentRequests, updateSimulatedClassPaymentStatus, type UserPurchase } from "../lib/purchases";
 import { isStripeCheckoutConfigured } from "../lib/stripe-checkout";
-import { isSupabaseConfigured } from "../lib/supabase";
+import { isSupabaseConfigured, supabase } from "../lib/supabase";
 import AdminQrControl from "./AdminQrControl";
 import AdminLogs from "./AdminLogs";
 import ConfirmDialog from "./ConfirmDialog";
@@ -415,7 +415,7 @@ export default function AdminDashboard({ account }: { account: Account }) {
       {activeTab === "orders" && (isWorkspaceLoading ? <AdminLoadingPanel /> : <AdminOrders orders={orders} onStatusChange={updateOrderStatus} />)}
       {activeTab === "qr-control" && <AdminQrControl />}
       {activeTab === "logs" && <AdminLogs />}
-      {activeTab === "settings" && <AdminSettings account={account} />}
+      {activeTab === "settings" && <AdminSettings />}
       <ConfirmDialog open={Boolean(confirmation)} eyebrow={t("confirmations.eyebrow")} title={confirmation?.title ?? ""} copy={confirmation?.copy ?? ""} confirmLabel={confirmation?.confirmLabel ?? t("confirmations.confirm")} cancelLabel={t("confirmations.cancel")} destructive={confirmation?.destructive} onConfirm={confirmPendingAction} onCancel={() => setConfirmation(null)} />
     </div>
   );
@@ -632,6 +632,23 @@ function AdminUsers({ users, account, draft, onEdit, onCancel, onSave }: { users
 
 function AdminUserProfileDashboard({ details, loading, error, onEdit, onClose }: { details: AdminUserDetail | null; loading: boolean; error: boolean; onEdit: () => void; onClose: () => void }) {
   const { t } = useTranslation();
+  const [recoveryStatus, setRecoveryStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+
+  async function sendRecoveryEmail() {
+    if (!details) return;
+    if (!supabase) {
+      setRecoveryStatus("error");
+      return;
+    }
+
+    setRecoveryStatus("loading");
+    try {
+      const { error: recoveryError } = await supabase.auth.resetPasswordForEmail(details.user.email, { redirectTo: `${window.location.origin}/login` });
+      setRecoveryStatus(recoveryError ? "error" : "success");
+    } catch {
+      setRecoveryStatus("error");
+    }
+  }
 
   function dateLabel(value: string | null) {
     if (!value) return t("admin.userDetail.notAvailable");
@@ -654,8 +671,10 @@ function AdminUserProfileDashboard({ details, loading, error, onEdit, onClose }:
   if (error || !details) return <section className="admin-user-detail admin-user-detail-loading" role="alert"><X size={18} /><span>{t("admin.userDetail.loadError")}</span></section>;
   const address = [details.profile.address, [details.profile.postalCode, details.profile.city].filter(Boolean).join(" ")].filter(Boolean).join(", ");
   return <section className="admin-user-detail">
-    <div className="admin-user-detail-heading"><div><p className="eyebrow"><Users size={14} />{t("admin.userDetail.eyebrow")}</p><h2>{details.user.name}</h2><p>{details.user.email}</p></div><div className="admin-user-detail-actions"><button className="secondary-button compact" type="button" onClick={onEdit}><Edit3 size={14} />{t("admin.userDetail.editProfile")}</button><button className="icon-button" type="button" onClick={onClose} aria-label={t("admin.close")}><X size={16} /></button></div></div>
+    <div className="admin-user-detail-heading"><div><p className="eyebrow"><Users size={14} />{t("admin.userDetail.eyebrow")}</p><h2>{details.user.name}</h2><p>{details.user.email}</p></div><div className="admin-user-detail-actions"><button className="secondary-button compact" type="button" onClick={sendRecoveryEmail} disabled={recoveryStatus === "loading"}><Mail size={14} />{t(recoveryStatus === "loading" ? "admin.userDetail.sendingRecoveryEmail" : "admin.userDetail.sendRecoveryEmail")}</button><button className="secondary-button compact" type="button" onClick={onEdit}><Edit3 size={14} />{t("admin.userDetail.editProfile")}</button><button className="icon-button" type="button" onClick={onClose} aria-label={t("admin.close")}><X size={16} /></button></div></div>
     <div className="admin-user-detail-source"><ShieldCheck size={15} />{details.source === "supabase" ? t("admin.userDetail.remoteSource") : t("admin.userDetail.constructionSource")}</div>
+    {recoveryStatus === "success" && <p className="form-message success" role="status"><Check size={15} />{t("admin.userDetail.recoveryEmailSent")}</p>}
+    {recoveryStatus === "error" && <p className="form-message error" role="alert">{t(supabase ? "admin.userDetail.recoveryEmailFailed" : "admin.userDetail.recoveryEmailUnavailable")}</p>}
     <div className="admin-user-detail-stats"><div><strong>{details.summary.activeAccess}</strong><span>{t("admin.userDetail.activeAccess")}</span></div><div><strong>{details.summary.purchaseCount}</strong><span>{t("admin.userDetail.purchaseCount")}</span></div><div><strong>{details.summary.pendingPurchases}</strong><span>{t("admin.userDetail.pendingPurchases")}</span></div><div><strong>{details.summary.sessionsRemaining}</strong><span>{t("admin.userDetail.sessionsRemaining")}</span></div></div>
     <div className="admin-user-detail-grid">
       <article className="admin-user-detail-card"><div className="admin-user-detail-card-heading"><div><p className="eyebrow"><UserCog size={14} />{t("admin.userDetail.profileEyebrow")}</p><h3>{t("admin.userDetail.profileTitle")}</h3></div></div><dl className="admin-user-detail-data"><div><dt>{t("firstName")}</dt><dd>{details.user.firstName || t("admin.userDetail.notAvailable")}</dd></div><div><dt>{t("lastName")}</dt><dd>{details.user.lastName || t("admin.userDetail.notAvailable")}</dd></div><div><dt>{t("email")}</dt><dd>{details.user.email}</dd></div><div><dt>{t("admin.userDetail.phone")}</dt><dd>{details.profile.phone || t("admin.userDetail.notAvailable")}</dd></div><div><dt>{t("admin.userDetail.address")}</dt><dd>{address || t("admin.userDetail.notAvailable")}</dd></div><div><dt>{t("admin.userDetail.danceRole")}</dt><dd>{details.profile.danceRole || t("admin.userDetail.notAvailable")}</dd></div><div><dt>{t("admin.userDetail.created")}</dt><dd>{dateLabel(details.profile.createdAt)}</dd></div><div><dt>{t("admin.userDetail.emailStatus")}</dt><dd>{details.profile.emailConfirmed === null ? t("admin.userDetail.notAvailable") : details.profile.emailConfirmed ? t("admin.userDetail.confirmed") : t("admin.userDetail.pending")}</dd></div></dl></article>
@@ -767,7 +786,7 @@ export function AdminMembers({ account }: { account: Account }) {
   return <section className="admin-panel admin-list-panel"><AdminListHeader eyebrow={t("admin.membersEyebrow")} title={t("admin.membersTitle")} actionLabel={t("admin.inviteMember")} onAction={() => undefined} /><div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>{t("admin.table.member")}</th><th>{t("admin.table.role")}</th><th>{t("admin.table.status")}</th><th>{t("admin.table.access")}</th></tr></thead><tbody>{members.map((member) => <tr key={member.id}><td><strong>{member.name}</strong><small>{member.email}</small></td><td><span className="role-pill"><Users size={13} />{t(`roles.${member.role}`)}</span></td><td><span className={`admin-status ${member.status}`}>{t(`admin.status.${member.status}`)}</span></td><td><button className="secondary-button compact" type="button"><UserCog size={14} />{t("admin.manage")}</button></td></tr>)}</tbody></table></div></section>;
 }
 
-function AdminSettings({ account }: { account: Account }) {
+function AdminSettings() {
   const { t } = useTranslation();
   const [settings, setSettings] = useState<AdminStudioSettings>(() => getAdminStudioSettings());
   const [isDirty, setIsDirty] = useState(false);
@@ -857,7 +876,7 @@ function AdminSettings({ account }: { account: Account }) {
       </div>
       <div className="admin-settings-footer"><button type="button" className="secondary-button" onClick={handleReset}><RotateCcw size={15} />{t("admin.settings.reset")}</button><span>{isDirty ? t("admin.settings.unsaved") : t("admin.settings.savedLocal")}</span><button type="submit" className="primary-button small" disabled={!isDirty}><Save size={16} />{t("admin.save")}</button></div>
     </form>
-    <PasswordChangeCard account={account} variant="admin" />
+    <PasswordChangeCard variant="admin" />
   </section>
   <ConfirmDialog open={Boolean(confirmation)} eyebrow={t("confirmations.eyebrow")} title={confirmation?.title ?? ""} copy={confirmation?.copy ?? ""} confirmLabel={confirmation?.confirmLabel ?? t("confirmations.confirm")} cancelLabel={t("confirmations.cancel")} destructive={confirmation?.destructive} onConfirm={confirmPendingChange} onCancel={() => setConfirmation(null)} />
   </>;

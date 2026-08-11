@@ -325,6 +325,7 @@ function App() {
 
   return (
     <div className={`app-shell${menuOpen ? " menu-open" : ""}`}>
+      <ScrollToTop />
       <AppHeader account={account} darkMode={darkMode} onDarkModeChange={setDarkMode} onSignOut={handleSignOut} menuOpen={menuOpen} onMenuToggle={() => setMenuOpen((open) => !open)} cartItems={courseCart} onRemoveFromCart={removeFromCourseCart} />
       <div className="app-layout">
         <Sidebar account={account} menuOpen={menuOpen} onNavigate={() => setMenuOpen(false)} />
@@ -357,6 +358,28 @@ function App() {
       <ConfirmDialog open={Boolean(cartRemovalConfirmation)} eyebrow={t("confirmations.eyebrow")} title={t("confirmations.deleteTitle", { item: cartRemovalConfirmation ? `${cartRemovalConfirmation.courseName}${cartRemovalConfirmation.styleName ? ` · ${cartRemovalConfirmation.styleName}` : ""}` : t("catalog.cart") })} copy={t("confirmations.deleteCopy")} confirmLabel={t("confirmations.delete")} cancelLabel={t("confirmations.cancel")} destructive onConfirm={confirmRemoveFromCourseCart} onCancel={() => setCartRemovalConfirmation(null)} />
     </div>
   );
+}
+
+function ScrollToTop() {
+  const location = useLocation();
+
+  useEffect(() => {
+    const targetId = location.hash ? decodeURIComponent(location.hash.slice(1)) : "";
+    const target = targetId ? document.getElementById(targetId) : null;
+
+    if (target) {
+      target.scrollIntoView({ block: "start", behavior: "auto" });
+      return;
+    }
+
+    const resetScroll = () => window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    resetScroll();
+    const timer = window.setTimeout(resetScroll, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [location.hash, location.pathname, location.search]);
+
+  return null;
 }
 
 function CartAddedDialog({ item, onClose }: { item: CourseCartItem; onClose: () => void }) {

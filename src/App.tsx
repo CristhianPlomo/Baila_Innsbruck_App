@@ -1166,6 +1166,7 @@ function OrdersPage({ account, freeTrialRegistration, onRegisterFreeTrial, cartI
   const [purchaseLoading, setPurchaseLoading] = useState(Boolean(account));
   const [purchaseFilter, setPurchaseFilter] = useState<PurchaseKind | "all">("all");
   const [selectedPurchaseId, setSelectedPurchaseId] = useState<string | null>(null);
+  const [purchaseDetailOpen, setPurchaseDetailOpen] = useState(false);
   const [simulatorPlan, setSimulatorPlan] = useState<PurchaseKind | null>(null);
   const [simulatorPaymentMethod, setSimulatorPaymentMethod] = useState<SimulatedPaymentMethod>("card");
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
@@ -1176,6 +1177,7 @@ function OrdersPage({ account, freeTrialRegistration, onRegisterFreeTrial, cartI
   const [checkoutStep, setCheckoutStep] = useState<1 | 2 | 3 | 4>(1);
   const [selectedFreeTrialId, setSelectedFreeTrialId] = useState<string | null>(null);
   const [compactCheckout, setCompactCheckout] = useState(() => window.matchMedia("(max-width: 1024px)").matches);
+  const [desktopPurchaseLayout, setDesktopPurchaseLayout] = useState(() => window.matchMedia("(min-width: 1025px)").matches);
   const [ordersView, setOrdersView] = useState<"active" | "history">(() => location.hash === "#old-orders" ? "history" : "active");
   const membershipCheckout = searchParams.get("product") === "membership";
   const selectedCourseCount = cartItems.length;
@@ -1250,10 +1252,17 @@ function OrdersPage({ account, freeTrialRegistration, onRegisterFreeTrial, cartI
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(max-width: 1024px)");
+    const desktopQuery = window.matchMedia("(min-width: 1025px)");
     const handleChange = (event: MediaQueryListEvent) => setCompactCheckout(event.matches);
+    const handleDesktopChange = (event: MediaQueryListEvent) => setDesktopPurchaseLayout(event.matches);
     setCompactCheckout(mediaQuery.matches);
+    setDesktopPurchaseLayout(desktopQuery.matches);
     mediaQuery.addEventListener("change", handleChange);
-    return () => mediaQuery.removeEventListener("change", handleChange);
+    desktopQuery.addEventListener("change", handleDesktopChange);
+    return () => {
+      mediaQuery.removeEventListener("change", handleChange);
+      desktopQuery.removeEventListener("change", handleDesktopChange);
+    };
   }, []);
 
   useEffect(() => {
@@ -1302,6 +1311,16 @@ function OrdersPage({ account, freeTrialRegistration, onRegisterFreeTrial, cartI
   function moveCheckoutToTop() {
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     window.requestAnimationFrame(() => document.getElementById("checkout")?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" }));
+  }
+
+  function selectPurchase(purchaseId: string) {
+    if (desktopPurchaseLayout && selectedPurchaseId === purchaseId) {
+      setPurchaseDetailOpen((open) => !open);
+      return;
+    }
+    setSelectedPurchaseId(purchaseId);
+    setSelectedSessionId(null);
+    setPurchaseDetailOpen(true);
   }
 
   function goToCheckoutStep(step: 1 | 2 | 3 | 4) {
@@ -1501,12 +1520,16 @@ function OrdersPage({ account, freeTrialRegistration, onRegisterFreeTrial, cartI
                 {(["all", "monthly", "quarterly", "package", "membership"] as const).map((filter) => <button type="button" className={purchaseFilter === filter ? "active" : ""} key={filter} onClick={() => { setPurchaseFilter(filter); setSelectedPurchaseId(null); }}>{t(`purchaseHistory.filters.${filter}`)}</button>)}
               </div>}
               {visiblePurchases.length > 0 ? (
-                <div className="purchase-history-layout">
+                <div className={`purchase-history-layout${desktopPurchaseLayout && !purchaseDetailOpen ? " detail-collapsed" : ""}`}>
                   <div className="purchase-history-list" role="list" aria-label={t("purchaseHistory.listLabel")}>
-                    {visiblePurchases.map((purchase) => <button type="button" className={`purchase-history-item${selectedPurchase?.id === purchase.id ? " selected" : ""}`} key={purchase.id} onClick={() => { setSelectedPurchaseId(purchase.id); setSelectedSessionId(null); }} aria-pressed={selectedPurchase?.id === purchase.id}><span className={`purchase-kind-icon ${purchase.kind}`}><ReceiptText size={18} /></span><span className="purchase-history-item-copy"><strong>{purchaseName(purchase)}</strong><small>{formatPurchaseDate(purchase.purchasedAt)} · {t(`purchaseHistory.kinds.${purchase.kind}`)}</small><span>{purchase.invoiceNumber ?? purchase.id}</span></span><span className="purchase-history-item-total"><strong>{formatMoney(purchase)}</strong><small className={`purchase-status ${purchase.status}`}>{t(`orderStatuses.${purchase.status}`)}</small></span><ChevronRight size={17} /></button>)}
+                    {visiblePurchases.map((purchase) => {
+                      const isSelected = selectedPurchase?.id === purchase.id;
+                      const isOpen = isSelected && purchaseDetailOpen;
+                      return <button type="button" className={`purchase-history-item${isSelected ? " selected" : ""}`} key={purchase.id} onClick={() => selectPurchase(purchase.id)} aria-pressed={isSelected} aria-expanded={isSelected ? purchaseDetailOpen || !desktopPurchaseLayout : false} aria-label={`${purchaseName(purchase)} · ${isOpen ? t("purchaseHistory.closeDetails") : t("purchaseHistory.openDetails")}`}><span className={`purchase-kind-icon ${purchase.kind}`}><ReceiptText size={18} /></span><span className="purchase-history-item-copy"><strong>{purchaseName(purchase)}</strong><small>{formatPurchaseDate(purchase.purchasedAt)} · {t(`purchaseHistory.kinds.${purchase.kind}`)}</small><span>{purchase.invoiceNumber ?? purchase.id}</span></span><span className="purchase-history-item-total"><strong>{formatMoney(purchase)}</strong><small className={`purchase-status ${purchase.status}`}>{t(`orderStatuses.${purchase.status}`)}</small></span><ChevronRight size={17} className={`purchase-detail-chevron${isOpen ? " open" : ""}`} /></button>;
+                    })}
                   </div>
                   {selectedPurchase && (
-                    <article className={`purchase-detail${selectedPurchase.status === "refunded" ? " cancelled" : ""}`} id="printable-invoice">
+                    <article className={`purchase-detail${selectedPurchase.status === "refunded" ? " cancelled" : ""}${desktopPurchaseLayout && !purchaseDetailOpen ? " collapsed" : ""}`} id="printable-invoice">
                       {isRejectedPurchasePendingRemoval(selectedPurchase) && <div className="purchase-rejection-notice" role="status"><X size={21} /><div><p className="eyebrow">{t("purchaseHistory.rejectedEyebrow")}</p><h3>{t("purchaseHistory.rejectedTitle")}</h3><p>{t("purchaseHistory.rejectedCopy")}</p></div></div>}
                       <header className="purchase-detail-header"><div><p className="eyebrow">{t("purchaseHistory.invoiceEyebrow")}</p><h3>{purchaseName(selectedPurchase)}</h3><span>{selectedPurchase.invoiceNumber ?? selectedPurchase.id}</span></div><div className="purchase-detail-actions"><button className="secondary-button compact print-button" type="button" onClick={() => window.print()}><Printer size={16} />{t("purchaseHistory.printInvoice")}</button>{selectedPurchase.invoicePdfUrl && <a className="primary-button small" href={selectedPurchase.invoicePdfUrl} target="_blank" rel="noreferrer">{t("purchaseHistory.openPdf")} <ArrowUpRight size={15} /></a>}</div></header>
                       <div className="invoice-parties"><div><small>{t("purchaseHistory.issuedBy")}</small><strong>BAILA INNSBRUCK – DANCE STUDIO</strong><span>Innsbruck · Austria</span></div><div><small>{t("purchaseHistory.customer")}</small><strong>{customerName}</strong><span>{account.email}</span></div></div>

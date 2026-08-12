@@ -230,6 +230,9 @@ Object.assign(resources.es.translation, { qrFullscreen: { expand: "Mostrar QR a 
 Object.assign((resources.en.translation as unknown as { purchaseHistory: Record<string, unknown> }).purchaseHistory, { endOfMonth: "End of the month" });
 Object.assign((resources.de.translation as unknown as { purchaseHistory: Record<string, unknown> }).purchaseHistory, { endOfMonth: "Monatsende" });
 Object.assign((resources.es.translation as unknown as { purchaseHistory: Record<string, unknown> }).purchaseHistory, { endOfMonth: "Final de mes" });
+Object.assign((resources.en.translation as unknown as { purchaseHistory: Record<string, unknown> }).purchaseHistory, { openDetails: "Open purchase details", closeDetails: "Close purchase details" });
+Object.assign((resources.de.translation as unknown as { purchaseHistory: Record<string, unknown> }).purchaseHistory, { openDetails: "Kaufdetails öffnen", closeDetails: "Kaufdetails schließen" });
+Object.assign((resources.es.translation as unknown as { purchaseHistory: Record<string, unknown> }).purchaseHistory, { openDetails: "Abrir detalles de la compra", closeDetails: "Cerrar detalles de la compra" });
 Object.assign((resources.en.translation as unknown as { purchaseSimulator: Record<string, unknown> }).purchaseSimulator, { monthlyQrCopy: "Show this QR in class. It is valid until the end of the month." });
 Object.assign((resources.de.translation as unknown as { purchaseSimulator: Record<string, unknown> }).purchaseSimulator, { monthlyQrCopy: "Zeige diesen QR-Code im Kurs. Er ist bis zum Monatsende gültig." });
 Object.assign((resources.es.translation as unknown as { purchaseSimulator: Record<string, unknown> }).purchaseSimulator, { monthlyQrCopy: "Muestra este QR en clase. Es válido hasta final de mes." });

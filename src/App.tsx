@@ -1524,7 +1524,7 @@ function OrdersPage({ account, freeTrialRegistration, onRegisterFreeTrial, cartI
                   <div className="purchase-history-list" role="list" aria-label={t("purchaseHistory.listLabel")}>
                     {visiblePurchases.map((purchase) => {
                       const isSelected = selectedPurchase?.id === purchase.id;
-                      const isOpen = isSelected && purchaseDetailOpen;
+                      const isOpen = isSelected && (purchaseDetailOpen || !desktopPurchaseLayout);
                       return <button type="button" className={`purchase-history-item${isSelected ? " selected" : ""}`} key={purchase.id} onClick={() => selectPurchase(purchase.id)} aria-pressed={isSelected} aria-expanded={isSelected ? purchaseDetailOpen || !desktopPurchaseLayout : false} aria-label={`${purchaseName(purchase)} · ${isOpen ? t("purchaseHistory.closeDetails") : t("purchaseHistory.openDetails")}`}><span className={`purchase-kind-icon ${purchase.kind}`}><ReceiptText size={18} /></span><span className="purchase-history-item-copy"><strong>{purchaseName(purchase)}</strong><small>{formatPurchaseDate(purchase.purchasedAt)} · {t(`purchaseHistory.kinds.${purchase.kind}`)}</small><span>{purchase.invoiceNumber ?? purchase.id}</span></span><span className="purchase-history-item-total"><strong>{formatMoney(purchase)}</strong><small className={`purchase-status ${purchase.status}`}>{t(`orderStatuses.${purchase.status}`)}</small></span><ChevronRight size={17} className={`purchase-detail-chevron${isOpen ? " open" : ""}`} /></button>;
                     })}
                   </div>

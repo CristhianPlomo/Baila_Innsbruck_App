@@ -892,6 +892,12 @@ html[data-theme="dark"] .course-card.course-card-with-image { color:#fff; }
 .full-plan-warning strong { font-family:Outfit,sans-serif; font-size:.86rem; }
 .full-plan-warning p { margin-top:5px; color:var(--ink); font-size:.57rem; line-height:1.5; }
 .full-plan-warning small { margin-top:6px; color:var(--muted); font-size:.51rem; line-height:1.45; }
+.checkout-add-course { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-top:14px; padding:14px 15px; border:1px solid var(--line); border-radius:13px; background:var(--surface); }
+.checkout-add-course > div { min-width:0; }
+.checkout-add-course strong,.checkout-add-course p { display:block; }
+.checkout-add-course strong { margin-top:5px; font-family:Outfit,sans-serif; font-size:.82rem; line-height:1.2; }
+.checkout-add-course > div > p:not(.eyebrow) { margin-top:5px; color:var(--muted); font-size:.54rem; line-height:1.45; }
+.checkout-add-course .secondary-button { flex:none; }
 .simulator-plan-grid.full-selection { grid-template-columns:repeat(2,minmax(0,1fr)); }
 .pricing-result-panel { margin-top:12px; padding:16px; border:1px solid var(--line); border-radius:14px; background:var(--surface); }
 .pricing-result-panel h3 { margin:6px 0; font-size:1.2rem; }
@@ -1166,6 +1172,8 @@ html[data-theme="dark"] .orders-view-navigation button.active { color:#0d0d0d; }
   .simulator-plan-grid { grid-template-columns:1fr; }
   .simulator-plan-grid.full-selection { grid-template-columns:1fr; }
   .checkout-progress small { font-size:.42rem; }
+  .checkout-add-course { align-items:stretch; flex-direction:column; gap:12px; }
+  .checkout-add-course .secondary-button { width:100%; justify-content:center; }
   .checkout-step-actions,.checkout-payment-actions { align-items:stretch; flex-direction:column-reverse; }
   .checkout-step-actions .primary-button,.checkout-step-actions .secondary-button,.checkout-payment-actions .primary-button,.checkout-payment-actions .secondary-button { width:100%; }
   .pricing-mode-banner { grid-template-columns:auto 1fr; }
